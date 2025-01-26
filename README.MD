@@ -9,7 +9,7 @@ A multi-threaded 2D game library built using Java and LWJGL
 
 Tutorial on setting up your first game [here](Information/BUILD-GAME.MD)
 
-##TODO
+## TODO
 - Keep optimizing everything
 - Finish documentation
 - Fix high-speed collisions
