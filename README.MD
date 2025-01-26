@@ -37,4 +37,3 @@ Tutorial on setting up your first game [here](Information/BUILD-GAME.MD)
 
 ## Extra information
 [Quick Reference](Information/QUICKGUIDE.MD)
-test
