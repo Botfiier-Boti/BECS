@@ -281,6 +281,7 @@ public class HelloWorld extends Game{
 			if (center.hasComponent("Position")) {
 				EntityComponent<Vector2f> posComp = center.getComponent("Position");
 				Vector2f v = posComp.get();
+				center.getComponent("Position").get();
 				//r.setCameraCenter(v);
 			}
 		}

@@ -110,6 +110,9 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		dead = true;
 		if (entities.contains(uuid))
 			entities.remove(uuid);
+		for (String s : components.keySet()) {
+			removeComponent(s);
+		}
 	}
 
 	/**

@@ -114,7 +114,7 @@ public class EntityComponent<T> implements Cloneable {
 
 	@Override
 	public EntityComponent<T> clone() {
-		return new EntityComponent<>(name, owner, information.get());
+		return new EntityComponent<T>(name, owner, information.get());
 	}
 
 
