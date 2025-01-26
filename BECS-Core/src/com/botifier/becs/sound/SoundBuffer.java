@@ -29,7 +29,11 @@ import org.lwjgl.stb.STBVorbisInfo;
 
 import com.botifier.becs.util.IOUtil;
 
-//https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/chapter22/chapter22.html modified
+/**https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/chapter22/chapter22.html modified
+ * SoundBuffer
+ * 
+ * TODO: Replace this?
+**/
 public class SoundBuffer {
 
 	private final int bufferId;

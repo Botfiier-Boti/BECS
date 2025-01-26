@@ -1,6 +1,5 @@
 package com.botifier.becs.entity;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,6 +48,10 @@ public abstract class EntitySystem {
 	 */
 	public abstract void apply(Entity[] entities);
 
+	/**
+	 * Run when game is closing
+	 * If you want to dereference the system, it is recommended to run this first.
+	 */
 	public abstract void destroy();
 
 	/**

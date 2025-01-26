@@ -31,6 +31,7 @@ public class AutoBatcher {
 	 * @param r
 	 */
 	public void draw(Renderer r) {
+		//Render everything by texture
 		queue.entrySet().stream().forEach(entry -> {
 			Texture t = entry.getKey();
 			ConcurrentLinkedQueue<Image> images = entry.getValue();
@@ -45,6 +46,7 @@ public class AutoBatcher {
 			   			   });
 			r.end();
 		});
+		//Clear the queue as it is done
 		queue.clear();
 	}
 

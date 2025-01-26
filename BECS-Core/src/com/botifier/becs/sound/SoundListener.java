@@ -8,7 +8,11 @@ import static org.lwjgl.openal.AL10.alListenerfv;
 
 import org.joml.Vector3f;
 
-//https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/chapter22/chapter22.html
+/**https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/chapter22/chapter22.html
+ * SoundListener
+ * 
+ * TODO: Replace this?
+ */
 public class SoundListener {
 
 	public SoundListener() {

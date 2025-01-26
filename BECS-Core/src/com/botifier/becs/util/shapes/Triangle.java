@@ -11,6 +11,14 @@ import org.joml.primitives.Intersectionf;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 
+/**
+ * Triangle
+ * 
+ * TODO: Finish this
+ * TODO: Document this
+ * 
+ * @author Botifier
+ */
 public class Triangle extends Shape {
 
 	public Vector2f p1;

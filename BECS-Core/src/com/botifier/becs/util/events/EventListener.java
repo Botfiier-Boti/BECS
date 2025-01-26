@@ -6,6 +6,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * EventListener
+ * 
+ * TODO: Document this
+ * 
+ * @author Botifier
+ */
 public abstract class EventListener {
 
 	private final UUID owner;

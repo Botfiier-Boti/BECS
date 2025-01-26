@@ -1,5 +1,10 @@
 package com.botifier.becs.sound;
 
+/**
+ * Sound 
+ * 
+ * TODO: Document this
+ */
 public class Sound {
 
 	private SoundSource s;

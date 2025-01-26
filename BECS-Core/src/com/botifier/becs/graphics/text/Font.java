@@ -48,6 +48,7 @@ import com.botifier.becs.graphics.images.Texture;
 import com.botifier.becs.graphics.shader.ShaderProgram;
 
 //Exact location obtained: https://github.com/SilverTiger/lwjgl3-tutorial/blob/master/src/silvertiger/tutorial/lwjgl/text/Font.java
+//TODO: Replace this with something better
 public class Font {
 
 	private java.awt.Font font;

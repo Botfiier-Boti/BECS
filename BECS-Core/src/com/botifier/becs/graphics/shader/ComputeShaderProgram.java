@@ -39,6 +39,10 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.system.MemoryStack;
 
+/**
+ * ComputeShaderProgram
+ * @author Botifier
+ */
 public class ComputeShaderProgram {
 
 	private final int id;

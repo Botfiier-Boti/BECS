@@ -4,6 +4,10 @@ import java.awt.Color;
 
 import com.botifier.becs.graphics.Renderer;
 
+/**
+ * RenderedText
+ * A CharSequence wrapper
+ */
 public class RenderedText {
 	private CharSequence cs;
 	private float x, y;

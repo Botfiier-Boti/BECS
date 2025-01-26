@@ -24,6 +24,14 @@ import com.botifier.becs.util.CollisionUtil;
 import com.botifier.becs.util.CollisionUtil.PolygonOutput;
 import com.botifier.becs.util.Math2;
 
+/**
+ * Polygon
+ * 
+ * TODO: Document this
+ * TODO: Optimize this
+ * 
+ * @author Botifier
+ */
 public class Polygon extends Shape {
 
 	// TriangulatedPolygon triangl;

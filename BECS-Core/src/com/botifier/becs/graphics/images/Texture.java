@@ -67,38 +67,85 @@ public class Texture {
 	 **/
 	private static ConcurrentHashMap<String, Texture> textureLocations = new ConcurrentHashMap<>();
 
+	/**
+	 * The texture id
+	 */
 	private final int id;
 
+	/**
+	 * The width of the texture
+	 */
 	private int width;
 
+	/**
+	 * The height of the texture
+	 */
 	private int height;
 
+	/**
+	 * The texture data
+	 */
 	private ByteBuffer image;
 	
+	/**
+	 * Where the texture came from
+	 */
 	private String location = "";
 
+	/**
+	 * Whether or not the buffer was purged
+	 */
 	private boolean exists = true;
 
+	/**
+	 * Texture constructor
+	 */
 	private Texture() {
 		id = glGenTextures();
 	}
 
+	/**
+	 * Binds the texture
+	 */
 	public void bind() {
 		glBindTexture(GL_TEXTURE_2D, getId());
 	}
 
+	/**
+	 * Sets specified texture parameter
+	 * @param name int Parameter id 
+	 * @param value int Value
+	 */
 	public void setParameter(int name, int value) {
 		glTexParameteri(GL_TEXTURE_2D, name, value);
 	}
 
+	/**
+	 * Uploads texture data
+	 * Uses RGBA8 
+	 * @param width int Texture width
+	 * @param height int Texture height
+	 * @param data ByteBuffer Texture data
+	 */
 	public void uploadData(int width, int height, ByteBuffer data) {
 		uploadData(GL_RGBA8, width, height, GL_RGBA, data);
 	}
 
+	/**
+	 * Uploads texture data
+	 * @param internalFormat int Internal texture format
+	 * @param width int Texture width
+	 * @param height int Texture height
+	 * @param format int Texture format
+	 * @param data ByteBuffer Texture data
+	 */
 	public void uploadData(int internalFormat, int width, int height, int format, ByteBuffer data) {
 		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 	}
 
+	/**
+	 * Destroys this texture
+	 */
 	public void delete() {
 		if (exists) {
 			System.out.println("Attempting to delete textures at ID: "+getId()); 
@@ -108,26 +155,50 @@ public class Texture {
 		}
 	}
 
+	/**
+	 * Returns the texture's width
+	 * @return int Texture width
+	 */
 	public int getWidth() {
 		return width;
 	}
 
+	/**
+	 * Returns the texture's height
+	 * @return int Texture height
+	 */
 	public int getHeight() {
 		return height;
 	}
 
+	/**
+	 * Changes the texture's width
+	 * @param width int Width to use
+	 */
 	public void setWidth(int width) {
 		if (width > 0) {
 			this.width = width;
 		}
 	}
 
+	/**
+	 * Changes the texture's height
+	 * @param height int Height to use
+	 */
 	public void setHeight(int height) {
 		if (height > 0) {
 			this.height = height;
 		}
 	}
 
+	/**
+	 * Creates a texture using a supplied byte buffer
+	 * @param width int Texture width
+	 * @param height int Texture height
+	 * @param data ByteBuffer Texture data
+	 * @param location String Texture origin; can be null
+	 * @return Texture
+	 */
 	public static Texture createTexture(int width, int height, ByteBuffer data, String location) {
 		Texture t = new Texture();
 		t.setWidth(width);
@@ -153,6 +224,13 @@ public class Texture {
 		return t;
 	}
 	
+	/**
+	 * Creates a texture using a supplied byte buffer
+	 * @param width int Texture width
+	 * @param height int Texture height
+	 * @param data ByteBuffer Texture data
+	 * @return Texture
+	 */
 	public static Texture createTexture(int width, int height, ByteBuffer data) {
 		Texture t = new Texture();
 		t.setWidth(width);
@@ -175,6 +253,13 @@ public class Texture {
 		return t;
 	}
 
+	/**
+	 * Creates a texture of a single color
+	 * @param width int Texture width
+	 * @param height int Texture height
+	 * @param c Color To use
+	 * @return Texture
+	 */
 	public static Texture createColoredTexture(int width, int height, Color c) {
 		String locationString = "**internal**:"+c.hashCode();
 		ByteBuffer image = null;
@@ -201,6 +286,12 @@ public class Texture {
 		return t;
 	}
 
+	/**
+	 * 
+	 * @param bi BufferedImage To convert
+	 * @param path String Original path
+	 * @return Texture
+	 */
 	private static Texture loadTexture(BufferedImage bi, String path) {
 		ByteBuffer image = null;
 		
@@ -232,6 +323,11 @@ public class Texture {
 		return t;
 	}
 
+	/**
+	 * Loads a texture from an internal path
+	 * @param path String Path to check
+	 * @return Texture
+	 */
 	public static Texture loadTexture(String path) {
 		ClassLoader cl = Image.class.getClassLoader();
 		Texture t = null;
@@ -244,6 +340,11 @@ public class Texture {
 		return t;
 	}
 	
+	/**
+	 * Loads a texture from an external path
+	 * @param path String Path to check
+	 * @return Texture
+	 */
 	public static Texture loadTextureExternal(String path) {
 		Texture t = null;
 		try {
@@ -259,6 +360,9 @@ public class Texture {
 
 	}
 
+	/**
+	 * Deletes all of the loaded textures
+	 */
 	public static void purgeTextures() {
 		for (Entry<String, Texture> e : textureLocations.entrySet()) {
 			Texture t = e.getValue();
@@ -268,14 +372,26 @@ public class Texture {
 		}
 	}
 	
+	/**
+	 * Gets the origin of the texture
+	 * @return String The origin
+	 */
 	public String getOriginLocation() {
 		return location;
 	}
 
+	/**
+	 * Gets the texture's buffer
+	 * @return ByteBuffer The buffer
+	 */
 	public ByteBuffer getBuffer() {
 		return image;
 	}
 
+	/**
+	 * Gets the texture's id
+	 * @return int The texture's id
+	 */
 	public int getId() {
 		return id;
 	}

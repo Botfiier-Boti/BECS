@@ -1,6 +1,5 @@
 package com.botifier.becs.entity;
 
-import java.io.Serializable;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -11,6 +10,7 @@ import com.botifier.becs.events.*;
 /**
  *
  * Base class for Entity Components
+ * Stores information atomically
  * @author Botifier
  *
  * @param \<T\> Type of component
@@ -18,10 +18,13 @@ import com.botifier.becs.events.*;
 public class EntityComponent<T> implements Cloneable {
 
 	/**
-	 * The name of the Component
+	 * The name of the component
 	 */
 	private final String name;
 	
+	/**
+	 * The component's owner
+	 */
 	private final Entity owner;
 
 	/**
@@ -29,6 +32,9 @@ public class EntityComponent<T> implements Cloneable {
 	 */
 	protected final AtomicReference<T> information;
 	
+	/**
+	 * The class type of the stored information
+	 */
 	protected final Class<T> type;
 
 	/**
@@ -75,6 +81,11 @@ public class EntityComponent<T> implements Cloneable {
 	}
 	
 
+	/**
+	 * Updates the stored information with a UnaryOperator
+	 * @param updater UnaryOperator\<T\> Update operator
+	 * @return T The stored information
+	 */
 	public T update(UnaryOperator<T> updater) {
 		T old = get();
 		T result = information.updateAndGet(updater);
@@ -85,10 +96,18 @@ public class EntityComponent<T> implements Cloneable {
 		return result;
 	}
 	
+	/**
+	 * Returns the owner of this component
+	 * @return Entity The owner
+	 */
 	public Entity getOwner() {
 		return owner;
 	}
 	
+	/**
+	 * Returns the component owner's UUID
+	 * @return UUID Owner's UUID
+	 */
 	public UUID getOwnerUUID() {
 		return owner != null ? owner.getUUID() : null;
 	}

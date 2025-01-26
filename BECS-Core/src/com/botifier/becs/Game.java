@@ -54,7 +54,6 @@ import com.botifier.becs.entity.EntityComponentManager;
 import com.botifier.becs.entity.EntitySystem;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
-import com.botifier.becs.graphics.images.Texture;
 import com.botifier.becs.sound.SoundListener;
 import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
@@ -168,8 +167,6 @@ public abstract class Game {
 	 * Tracks whether or not the game is running
 	 */
 	private final AtomicBoolean running = new AtomicBoolean(true);
-
-	private final AtomicBoolean updated = new AtomicBoolean(false);
 	
 	/**
 	 * Whether or not the game is resizable
@@ -260,7 +257,7 @@ public abstract class Game {
 	 * @param height Window height
 	 * @param vsync Enable/disable vsync
 	 * @param resizable Enable/disable window resizing
-	 * @param noLock Sets whether or not locks should be used
+	 * @param noLock Sets whether or not locks should be used; Causes visual artifacts
 	 */
 	public Game(String title, int width, int height, boolean vsync, boolean resizable, boolean noLock) {
 		this.title = title;
@@ -334,6 +331,8 @@ public abstract class Game {
 	/**
 	 * Customizable Draw
 	 * @param r Renderer to use
+	 * @param ws WorldState a wrapper for the Entity Map
+	 * @param camera RotatableRectangle A RotatableRectangle representing the camera area
 	 * @param alpha Alpha used for interpolation
 	 */
 	public abstract void draw(Renderer r, WorldState ws, RotatableRectangle camera, float alpha);
@@ -904,21 +903,21 @@ public abstract class Game {
 				return;
 			}
 			Thread.currentThread().setName("Update Thread");
-			t.update();
-			ticksAlive++;
-			delta.set(t.getDelta());
+			t.update(); //Update the timer
+			ticksAlive++; //Add to the tick tracker
+			delta.set(t.getDelta()); //set delta
 			if (!noLock) {
-				l.lock();
+				l.lock(); //Obtains a lock if locking is enabled
 			}
-			update();
-			t.updateUPS();
-			systems.stream().parallel().forEach(system -> {
-				Entity[] entities = system.getValidEntities().toArray(Entity[]::new);
-				system.apply(entities);
+			update(); //Performs an update
+			t.updateUPS(); //Updates UPS counter (Updates Per Second)
+			systems.stream().parallel().forEach(system -> { // Runs all systems in parallel
+				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); //Obtains all valid entities for a system
+				system.apply(entities); //Applies the system to all of those entities
 			});
 			
 			if (!noLock) {
-				l.unlock();
+				l.unlock(); //Unlocks if locking is enabled
 			}
 		}
 	}
@@ -934,28 +933,32 @@ public abstract class Game {
 				return;
 			}
 			Thread.currentThread().setName("Render Thread");
-			glfwMakeContextCurrent(window.getId());
-			GL.setCapabilities(window.getGLCapabilities());
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glfwMakeContextCurrent(window.getId()); //Obtains context
+			GL.setCapabilities(window.getGLCapabilities()); //Obtains the current window's GL Capabilities
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
 			if (!noLock) {
-				l.lock();
+				l.lock(); // Locks if locking is enabled
 			}
-			RotatableRectangle camera = new RotatableRectangle(getRenderer().getCameraCenter().x, getRenderer().getCameraCenter().y, getWidth() * getRenderer().getZoom(), getHeight() * getRenderer().getZoom());
-			WorldState ws = new WorldState(camera.toPolygon(), false);
+			//A rectangle representing the camera, for culling purposes
+			RotatableRectangle camera = new RotatableRectangle(getRenderer().getCameraCenter().x,
+															   getRenderer().getCameraCenter().y,
+															   getWidth() * getRenderer().getZoom(),
+															   getHeight() * getRenderer().getZoom());
+			WorldState ws = new WorldState(camera.toPolygon(), false); //Creates a WorldState 
 
-			draw(getRenderer(), ws, camera, alpha.get());
+			draw(getRenderer(), ws, camera, alpha.get()); //Runs draw functions
 			if (autoDrawBatch) {
-				getRenderer().getAutoBatcher().draw(getRenderer());
+				getRenderer().getAutoBatcher().draw(getRenderer()); //Automatically draws information in the AutoBatcher
 			}
 			if (!noLock) {
-				l.unlock();
+				l.unlock(); // Unlocks if locking is enabled
 			}
 			if (getRenderer().hasRendered()) {
-				glfwSwapBuffers(window.getId());
+				glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
 			}
-			getRenderer().resetRenderStatus();
-			t.updateFPS();
-			updated.set(false);
+			getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
+											   // Draws happened on this frame
+			t.updateFPS(); // Updates the FPS counter
 		}
 
 	}

@@ -31,7 +31,7 @@ public class TestPlayer extends Entity {
 		addComponent("Position", new Vector2f(initialPos));
 		addComponent("Image", i);
 		addComponent("Velocity", new Vector2f(0,0));
-		addComponent("PhysicsEnabled", new PhysicsListener());
+		addComponent("PhysicsEnabled", new PhysicsListener(getUUID()));
 		addComponent("CollisionShape", rr);
 		addComponent("Speed", 10f);
 		addComponent("Collidable", true);

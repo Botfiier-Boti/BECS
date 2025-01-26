@@ -3,6 +3,11 @@ package com.botifier.becs.util.debugging;
 import java.io.PrintStream;
 
 
+/**
+ * ExecutionTimer
+ * 
+ * for some testing
+ */
 public class ExecutionTimer implements AutoCloseable {
 
 	public final static String DEFAULT_NAME = "Timer";

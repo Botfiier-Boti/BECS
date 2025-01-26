@@ -4,6 +4,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
+/**
+ * EventController
+ * 
+ * Holds method information
+ * 
+ * @author Botifier
+ */
 public class EventController {
 	private final EventListener listener;
 	private final Method method;

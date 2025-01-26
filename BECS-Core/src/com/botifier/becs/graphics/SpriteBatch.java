@@ -23,7 +23,15 @@ import com.botifier.becs.util.shapes.RotatableRectangle;
  *
  */
 public class SpriteBatch {
+	/**
+	 * The vertex size
+	 * TODO: Something better than this
+	 */
 	private static final int VERTEX_SIZE = 24;
+	/**
+	 * The default line with
+	 * TODO: Change this to a config value
+	 */
 	private static final int DEFAULT_LINE_WIDTH = 2;
 
 	/**
@@ -82,6 +90,7 @@ public class SpriteBatch {
 	 */
 	public void begin() {
 		if (!drawing) {
+			//Maps the assigned portion of the render buffer to this
 			vertices = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE,
 					r.getVertices().capacity() / r.getNumBatches(),
 					r.getVertices());
@@ -118,6 +127,11 @@ public class SpriteBatch {
 		r.removeBatch(this);
 	}
 
+	/**
+	 * Checks if there is enough space in the vertice buffer
+	 * @param requiredVertices int Required number of vertices
+	 * @return boolean If there is enough space
+	 */
 	private boolean ensureSpace(int requiredVertices) {
 		if (vertices == null || vertices.remaining() < requiredVertices * VERTEX_SIZE) {
 			return false;
@@ -137,6 +151,23 @@ public class SpriteBatch {
 		drawTextureRegion(x, y, x + width, y + height, z, 0, 0, 1, 1, c);
 	}
 
+	/**
+	 * Fills a triangle
+	 * @param x1 float First x
+	 * @param y1 float First y
+	 * @param x2 float Second x
+	 * @param y2 float Second y
+	 * @param x3 float Third x
+	 * @param y3 float Third y
+	 * @param z float Z position
+	 * @param s1 float First UV x
+	 * @param t1 float First UV y
+	 * @param s2 float Second UV x
+	 * @param t2 float Second UV y
+	 * @param s3 float Third UV x
+	 * @param t3 float Third UV y
+	 * @param c Color To use
+	 */
 	public void fillTriangle(float x1, float y1, float x2, float y2, float x3, float y3, float z, float s1, float t1, float s2, float t2, float s3, float t3, Color c) {
 		if ((vertices == null) || (vertices.remaining() < 72)) {
 			//TODO: Fill triangle in renderer

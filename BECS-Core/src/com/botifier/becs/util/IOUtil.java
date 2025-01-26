@@ -21,6 +21,13 @@ import java.nio.file.Paths;
 
 import org.lwjgl.BufferUtils;
 
+/**
+ * IOUtil
+ * 
+ * This was supposedly a part of LWJGL 3
+ * 
+ * TODO: Finish documenting this
+ */
 public final class IOUtil {
 
     private IOUtil() {

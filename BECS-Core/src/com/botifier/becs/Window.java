@@ -41,6 +41,11 @@ import org.lwjgl.system.MemoryUtil;
 
 import com.botifier.becs.graphics.images.Image;
 
+/**
+ * Window
+ * 
+ * @author Botifier
+ */
 public class Window {
 	/**
 	 * Thread pool

@@ -20,7 +20,18 @@ import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.Shape;
 
 /**
+ * SpatialEntityMap
+ * 
  * A spatial map for entities
+ * 
+ * TODO: Document this
+ * TODO: Optimize this
+ * TODO: Ensure that deadlocks don't occur
+ * TODO: Create sub maps for fast queries on specific areas
+ * TODO: Make queries that return sub maps
+ *  
+ * 
+ * @author Botifier
  */
 public class SpatialEntityMap {
 	private int cellSize;

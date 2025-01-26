@@ -1,6 +1,5 @@
 package com.botifier.becs.util;
 
-import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -8,6 +7,13 @@ import com.botifier.becs.graphics.images.Texture;
 import com.botifier.becs.graphics.shader.ShaderProgram;
 import com.botifier.becs.sound.Sound;
 
+/**
+ * ResourceManager
+ * 
+ * TODO: Consider making this local and storing in Game
+ * 
+ * @author Botifier
+ */
 public class ResourceManager {
 
 	private final static Map<String, Texture> images = new ConcurrentHashMap<String, Texture>();

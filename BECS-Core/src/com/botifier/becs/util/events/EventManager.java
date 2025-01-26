@@ -3,7 +3,6 @@ package com.botifier.becs.util.events;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +13,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.botifier.becs.Game;
-import com.botifier.becs.entity.Entity;
 import com.botifier.becs.util.annotations.EventHandler;
 
 public class EventManager {

@@ -84,6 +84,10 @@ public class ShaderProgram {
         id = glCreateProgram();
     }
 
+    /**
+     * ShaderProgram constructor that uses an array of shaders
+     * @param shaders Shader... shaders to use
+     */
     public ShaderProgram(Shader... shaders) {
     	this();
     	for (Shader s : shaders) {
@@ -91,10 +95,19 @@ public class ShaderProgram {
     	}
     }
 
+    /**
+     * ShaderProgram constructor with supplied internal shader locations
+     * @param vertex String Vertex location
+     * @param frag 	 String Fragment location
+     */
     public ShaderProgram(String vertex, String frag) {
     	this(Shader.loadShader(GL_VERTEX_SHADER, vertex), Shader.loadShader(GL_FRAGMENT_SHADER, frag));
     }
 
+    /**
+     * Initializes the ShaderProgram using the supplied name as the fragment color parameter
+     * @param fragColorName String Name of the fragment parameter
+     */
     public void init(String fragColorName) {
 		this.bindFragmentDataLocation(0, fragColorName);
 		this.link();
@@ -172,6 +185,15 @@ public class ShaderProgram {
         pointVertexAttribute(location, size, GL_FLOAT, stride, offset);
     }
 
+    /**
+     * Sets the vertex attribute pointer.
+     * 
+     * @param location
+     * @param size
+     * @param type
+     * @param stride
+     * @param offset
+     */
     public void pointVertexAttribute(int location, int size, int type, int stride, int offset) {
         glVertexAttribPointer(location, size, type, false, stride, offset);
     }
@@ -305,6 +327,10 @@ public class ShaderProgram {
         glDeleteProgram(getId());
     }
 
+    /**
+     * Returns the shader program's id.
+     * @return int The id
+     */
 	public int getId() {
 		return id;
 	}

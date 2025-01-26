@@ -16,7 +16,11 @@ import com.botifier.becs.graphics.shader.ShaderProgram;
 import com.botifier.becs.util.ResourceManager;
 import com.botifier.becs.util.shapes.Shape;
 
-public class Image implements Externalizable {
+/**
+ * Image class
+ * @author Botifier
+ */
+public class Image {
 
 	/**
 	 * Default white pixel
@@ -86,6 +90,9 @@ public class Image implements Externalizable {
 	 */
 	private String sp = null;
 	
+	/**
+	 * ShaderProgram buffer
+	 */
 	private ShaderProgram buffer = null;
 
 	/**
@@ -509,18 +516,6 @@ public class Image implements Externalizable {
 	 */
 	public float getScale() {
 		return scale;
-	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		// TODO Auto-generated method stub
-		
 	}
 
 }

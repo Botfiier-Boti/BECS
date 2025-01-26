@@ -187,7 +187,7 @@ public class HelloWorld extends Game{
 					addComponent("Bullet", true);
 					addComponent("Speed", 4f);
 					addComponent("Solid", true);
-					addComponent("PhysicsEnabled", new PhysicsListener());
+					addComponent("PhysicsEnabled", new PhysicsListener(e.getUUID()));
 					//addComponent("ArrowKeyControlled", true);
 				}
 			};

@@ -16,6 +16,14 @@ import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.Math2;
 
+/**
+ * Line
+ * 
+ * TODO: Document this
+ * TODO: Optimize this
+ * 
+ * @author Botifier
+ */
 public class Line extends Shape {
 	Vector2f p1, p2;
 

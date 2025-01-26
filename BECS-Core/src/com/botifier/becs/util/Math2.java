@@ -9,6 +9,11 @@ import com.botifier.becs.util.shapes.*;
 
 /**
  * Math functions that do not already exist in this form
+ * 
+ * TODO: More documentation
+ * TODO: Add more math
+ * TODO: Ensure math isn't wrong
+ * 
  * @author Botifier
  *
  */

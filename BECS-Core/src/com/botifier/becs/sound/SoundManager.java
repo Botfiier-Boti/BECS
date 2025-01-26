@@ -18,8 +18,14 @@ import org.joml.Matrix4f;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
-//https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/chapter22/chapter22.html
 import org.lwjgl.openal.ALCapabilities;
+
+/**https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/chapter22/chapter22.html
+ * SoundManager
+ * 
+ * TODO: Combine with ResourceManager
+ * TODO: Document this
+ **/
 public class SoundManager {
 	private long device;
 

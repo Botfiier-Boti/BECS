@@ -12,6 +12,16 @@ import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 
 
+/**
+ * SpatialPolygonHolder
+ * Rasterized polygons
+ * 
+ * TODO: Make this a compute shader
+ * TODO: Optimize this
+ * TODO: Finish documenting this
+ * 
+ * @author Botifier
+ */
 public class SpatialPolygonHolder {
 	final int cellSize;
 	final Entity owner;

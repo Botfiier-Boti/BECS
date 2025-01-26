@@ -26,6 +26,8 @@ import java.awt.Color;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Optional;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -53,6 +55,7 @@ import com.botifier.becs.util.shapes.RotatableRectangle;
  * https://github.com/SilverTiger/lwjgl3-tutorial/blob/master/src/silvertiger/tutorial/lwjgl/graphic/Renderer.java
  * Renderer class
  *
+ * Renders using orthographic projection
  * @author Botifier
  */
 public class Renderer {
@@ -197,28 +200,48 @@ public class Renderer {
 	/**
 	 * Renderer initializer
 	 *
-	 * @param window Game to use
+	 * @param window Game To use
 	 */
 	public void init(Game window) {
+		//Setup the auto batcher
 		batcher = new AutoBatcher();
+		//Setup the buffers
 		setupBuffers();
+		//General setup
 		setup();
 
+		//Enable blending
 		glEnable(GL_BLEND);
-		glEnable(GL_LINE_SMOOTH);
+		//Enable the depth test
 		glEnable(GL11.GL_DEPTH_TEST);
+		//Enable alpha blending
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//Use the Less than or equal to depth function
 		GL11.glDepthFunc(GL11.GL_LEQUAL);
 	}
 
+	/**
+	 * Renders everything to the supplied FBO
+	 * @param g Game Game of origin
+	 * @param fbo FBO fbo to use
+	 * @param alpha float Alpha value, for interpolation
+	 */
 	public void renderAllToFBO(Game g, FBO fbo, float alpha) {
+		//Binds the FBO
 		fbo.bind();
+		//Clears the depth and color buffers
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//Creates a camera rectangle
 		RotatableRectangle camera = new RotatableRectangle(getCameraCenter().x, getCameraCenter().y, getCurrentWidth(), getCurrentHeight());
+		//Creates a world state
 		WorldState ws = new WorldState(camera.toPolygon(), false);
+		//Perform draw commands
 		g.draw(this, ws, camera, alpha);
+		//Draw the auto batcher
 		getAutoBatcher().draw(this);
+		//Unbind the FBO
 		fbo.unbind();
+		//Draw the FBO image
 		fbo.draw(this);
 	}
 
@@ -226,9 +249,9 @@ public class Renderer {
 	/**
 	 * Writes text to the screen
 	 *
-	 * @param cs Text to write
-	 * @param x  X location
-	 * @param y  Y location
+	 * @param cs CharSequence Text to write
+	 * @param x float X location
+	 * @param y float Y location
 	 */
 	public void writeText(CharSequence cs, float x, float y) {
 		writeText(cs, x, y, Color.WHITE);
@@ -240,7 +263,7 @@ public class Renderer {
 	 * @param cs Text to write
 	 * @param x  X location
 	 * @param y  Y location
-	 * @param c  Color to use
+	 * @param c  Color To use
 	 */
 	public void writeText(CharSequence cs, float x, float y, Color c) {
 		if (font == null) {
@@ -252,11 +275,13 @@ public class Renderer {
 
 	/**
 	 * Draws specified image's texture to the screen
+	 * Doesn't bind the texture, just uses the properties
 	 *
-	 * @param i Image to use
-	 * @param x X location
-	 * @param y Y location
-	 * @param c Color to use
+	 * @param i Image To use
+	 * @param x float X location
+	 * @param y float Y location
+	 * @param z float Z location
+	 * @param c Color To use
 	 */
 	public void drawImage(Image i, float x, float y, float z, Color c) {
 		float x1 = x;
@@ -272,6 +297,19 @@ public class Renderer {
 		drawTextureRegion(x1, y1, x2, y2, z, s1, t1, s2, t2, c);
 	}
 
+	/**
+	 * Draws a section of the binded texture
+	 * @param x float X location
+	 * @param y float Y location
+	 * @param z float Z location
+	 * @param width float The width
+	 * @param height float The height
+	 * @param tx float The internal x location
+	 * @param ty float The internal t location
+	 * @param tWidth float The width of the internal texture
+	 * @param tHeight float The height of the internal texture
+	 * @param c Color To use
+	 */
 	public void drawSubImage(float x, float y, float z, float width, float height, float tx, float ty, float tWidth,
 			float tHeight, Color c) {
 		float x1 = x;
@@ -287,6 +325,15 @@ public class Renderer {
 		drawTextureRegion(x1, y1, x2, y2, z, s1, t1, s2, t2, c);
 	}
 
+	/**
+	 * Draws a rectangle
+	 * @param x float The X
+	 * @param y float The Y
+	 * @param z float The Z
+	 * @param width float The width
+	 * @param height float The height
+	 * @param c Color To use
+	 */
 	public void drawRectangle(float x, float y, float z, float width, float height, Color c) {
 		float x1 = x;
 		float y1 = y;
@@ -584,11 +631,15 @@ public class Renderer {
 		System.out.println("Done!");
 	}
 
+	/**
+	 * Begin without a specified shader program
+	 */
 	public void begin() {
 		begin(null);
 	}
 	/**
 	 * Begins the drawing process
+	 * @param p ShaderProgram To use
 	 */
 	public void begin(ShaderProgram p) {
 		if (drawing || (vertices == null)) {
@@ -628,7 +679,7 @@ public class Renderer {
 	}
 
 	/**
-	 * Flushes information to LWJGL
+	 * Flushes information to be rendered
 	 */
 	public void flush() {
 		batches.forEach(SpriteBatch::flush);
@@ -751,6 +802,12 @@ public class Renderer {
 		setCameraCenter(pos, new Vector2f());
 	}
 
+	/**
+	 * Sets the center of the camera with an offset
+	 * 
+	 * @param pos Vector2f The camera's center
+	 * @param offset Vector2f The offset
+	 */
 	public void setCameraCenter(Vector2f pos, Vector2f offset) {
 		int width = Game.getCurrent().getWidth(), height = Game.getCurrent().getHeight();
 
@@ -762,6 +819,11 @@ public class Renderer {
 		setProjectionMatrix(program, projection);
 	}
 
+	/**
+	 * Updates the cameras projection without updating the main projection
+	 * @param program ShaderProgram To update
+	 * @param projection Matrix4f To use
+	 */
 	public void updateProjectionMatrix(ShaderProgram program, Matrix4f projection) {
 		program.use();
 		int uniProjection = program.getUniformLocation("projection");
@@ -774,28 +836,44 @@ public class Renderer {
 		GL11.glViewport(0, 0, Game.getCurrent().getWidth(), Game.getCurrent().getHeight());
 	}
 
+	/**
+	 * Sets the projection
+	 * @param program ShaderProgram To update
+	 * @param projection Matrix4f to use
+	 */
 	public void setProjectionMatrix(ShaderProgram program, Matrix4f projection) {
 		this.projection = projection;
 		updateProjectionMatrix(program, projection);
 	}
 
+	/**
+	 * Setup the basics
+	 */
 	private void setup() {
+		//Setup tracking variables
 		numVertices = 0;
 		drawing = false;
+		
+		//Setup the zoom
 		currentZoom = 1;
 
+		//Adds the first SpriteBatch
 		numBatches++;
 		SpriteBatch use = new SpriteBatch(this);
 		batches.add(use);
 
+		//Setup the shaders
 		vertex = Shader.loadShader(GL_VERTEX_SHADER, "default.vert");
 		fragment = Shader.loadShader(GL_FRAGMENT_SHADER, "default.frag");
 
+		//Setup the shader program
 		program = new ShaderProgram(vertex, fragment);
 
+		//Delete the shaders they aren't needed anymore
 		vertex.delete();
 		fragment.delete();
 
+		//Initializes the projection
 		long window = GLFW.glfwGetCurrentContext();
 		int width, height;
 		try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -807,10 +885,11 @@ public class Renderer {
 		}
 		projection = new Matrix4f().ortho2D(0, width * currentZoom, 0, height * currentZoom);
 
-
+		//Initializes the shader program with fragColor as the fragColor variable
 		program.init("fragColor");
 		setupShader(program);
 
+		//List the attributes to the console
 		int numAttributes = GL20.glGetProgrami(program.getId(), GL20.GL_ACTIVE_ATTRIBUTES);
 		for (int i = 0; i < numAttributes; i++) {
 		    IntBuffer sizeBuffer = BufferUtils.createIntBuffer(1);
@@ -848,6 +927,9 @@ public class Renderer {
 		updateProjectionMatrix(sp, projection);
 	}
 
+	/**
+	 * Sets up the buffers
+	 */
 	public void setupBuffers() {
 		vbo = new VBO();
 		vbo.bind(GL_ARRAY_BUFFER);
@@ -944,21 +1026,29 @@ public class Renderer {
 	public SpriteBatch getFirstOpenBatch(int vert) {
 		SpriteBatch use = null;
 
-		for (SpriteBatch batch : batches) {
-			if ((batch == null) || (batch.getVertices() == null) || batch.isFull() || batch.getVertices().remaining() < vert) {
-				continue;
-			}
-
-			use = batch;
-			break;
-		}
-
-		if (use == null) {
+		Optional<SpriteBatch> lookup = batches.stream().filter(Objects::nonNull).filter(batch -> {
+			if (batch == null)
+				return false;
+			if (batch.getVertices() == null)
+				return false;
+			if (batch.isFull())
+				return false;
+			if (batch.getVertices().remaining() < vert)
+				return false;
+			
+			return true;
+		}).findFirst();
+		
+		if (lookup.isPresent())
+			use = lookup.get();
+		else {
 			if (vertices.capacity() >= BUFFER_SIZE * (BATCH_AMOUNT + 1)) {
+				//If over capacity, finish rendering and then return the first batch
 				end();
 				begin();
 				return batches.get(0);
 			}
+			//If this is done mid draw finish rendering
 			if (drawing) {
 				end();
 			}

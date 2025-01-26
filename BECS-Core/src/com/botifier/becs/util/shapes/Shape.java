@@ -12,6 +12,15 @@ import org.joml.Vector2f;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 
+/**
+ * Shape
+ *
+ * TODO: Document this
+ * TODO: Make immutable shapes
+ * TODO: Find a way to have less shapes
+ *
+ * @author Botifier
+ */
 public abstract class Shape implements IShape, Cloneable, Externalizable {
 	
 	protected Vector2f center;

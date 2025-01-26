@@ -14,6 +14,15 @@ import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.Math2;
 
+/**
+ * Circle
+ * 
+ * TODO: Finish documenting this
+ * TODO: Better circle rendering
+ * TODO: Better intersection checks
+ * 
+ * @author Botifier
+ */
 public class Circle extends Shape {
 
 	/**

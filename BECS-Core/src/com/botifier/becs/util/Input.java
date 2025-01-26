@@ -20,6 +20,14 @@ import org.lwjgl.system.MemoryUtil;
 import com.botifier.becs.Game;
 import com.botifier.becs.graphics.Renderer;
 
+/**
+ * Input
+ * 
+ * TODO: Add more events
+ * TODO: Make sure there isn't any memory leaks
+ * 
+ * @author Botifier
+ */
 public class Input {
 	/**
 	 * The window id

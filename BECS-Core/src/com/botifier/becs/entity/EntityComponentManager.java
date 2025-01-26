@@ -31,7 +31,7 @@ public class EntityComponentManager {
 	 * Map of overrides for custom component types
 	 */
 	private static final ConcurrentHashMap<Class<?>, Class<? extends EntityComponent<?>>> overrideMap = new ConcurrentHashMap<>();
-
+	
 	/**
 	 * Initializes basic components
 	 */
@@ -92,6 +92,45 @@ public class EntityComponentManager {
 														   component.getName(),
 														   e.getUUID());
 	}
+	
+	
+	/**
+	 * Removes a component from an entity
+	 * @param <T> Type of information in the component
+	 * @param e
+	 * @param componentName
+	 * @return
+	 */
+	public static <T> EntityComponent<T> removeComponent(Entity e, String componentName) {
+		if (e == null || componentName == null)
+			return null;
+		String lower = componentName.toLowerCase();
+
+		EntityComponent<?> en = e.components.getOrDefault(lower, null);
+		
+		if (en == null)
+			return null;
+		
+		Class<?> type = nameMap.getOrDefault(componentName.toLowerCase(), null);
+		
+		if (type == null)
+			throw new IllegalArgumentException(String.format("No type mapping for for component %s", lower));
+		
+		if (type.isAssignableFrom(en.get().getClass()) 
+				|| getWrapperClass(type).isAssignableFrom(en.get().getClass())
+				|| getPrimitiveClass(type).isAssignableFrom(en.get().getClass()))
+			throw new ClassCastException(String.format("%s is not compatible with %s", en.get().getClass().getSimpleName(), type.getSimpleName()));
+		
+		e.components.remove(lower);
+		componentMap.get(lower).remove(e);
+		
+		@SuppressWarnings("unchecked")
+		EntityComponent<T> ent =  new EntityComponent<T>(lower, e, (T) en.get());
+		Game.getCurrent().getEventManager().executeEventOn(new EntityComponentRemovedEvent<T>(e, ent),
+				   en.getName(),
+				   e.getUUID());
+		return ent;
+	}
 
 	/**
 	 * Gives an entity a component based on name
@@ -113,14 +152,14 @@ public class EntityComponentManager {
 		});
 		
 		
+		Class<? > type = nameMap.getOrDefault(componentName.toLowerCase(), null);
+		if (!type.isAssignableFrom(data.getClass()) 
+				&& !getWrapperClass(type).isAssignableFrom(data.getClass())
+				&& !getPrimitiveClass(type).isAssignableFrom(data.getClass()))
+			throw new ClassCastException(String.format("%s is not compatible with %s", data.getClass().getSimpleName(), type.getSimpleName()));
+		
 		if (clazz == null) {
-			Class<? > type = nameMap.getOrDefault(componentName.toLowerCase(), null);
-			if (type.isAssignableFrom(data.getClass()) 
-					|| getWrapperClass(type).isAssignableFrom(data.getClass())
-					|| getPrimitiveClass(type).isAssignableFrom(data.getClass()))
 				component = new EntityComponent<Z>(componentName, e, data);
-			else
-				throw new ClassCastException(String.format("%s is not compatible with %s", data.getClass().getSimpleName(), type.getSimpleName()));
 		} else {
 			try {
 				component = (EntityComponent<Z>) clazz.getDeclaredConstructors()[0].newInstance(componentName, e, data);
@@ -164,6 +203,12 @@ public class EntityComponentManager {
 		return nameMap.get(name.toLowerCase());
 	}
 
+	/**
+	 * Returns the wrappers of primitives classes
+	 * TODO: Move this somewhere else
+	 * @param primitiveType
+	 * @return
+	 */
 	private static Class<?> getWrapperClass(Class<?> primitiveType) {
 	    if (primitiveType == int.class) return Integer.class;
 	    if (primitiveType == long.class) return Long.class;
@@ -176,6 +221,12 @@ public class EntityComponentManager {
 	    return primitiveType;
 	}
 	
+	/**
+	 * Returns the primitive version of primitive wrapper classes
+	 * TODO: Move this somewhere else
+	 * @param primitiveType Class<?> Wrapper class
+	 * @return Class<?> The primitive version of the wrapper
+	 */
 	private static Class<?> getPrimitiveClass(Class<?> primitiveType) {
 	    if (primitiveType == Integer.class) return int.class;
 	    if (primitiveType == Long.class) return long.class;

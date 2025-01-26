@@ -28,20 +28,36 @@ import static org.lwjgl.opengl.GL30.glGenVertexArrays;
  */
 public class VAO {
 
+	/**
+	 * The id of this VAO
+	 */
 	private final int id;
 
+	/**
+	 * VAO constructor
+	 */
 	public VAO() {
 		id = glGenVertexArrays();
 	}
 
+	/**
+	 * Binds this VAO
+	 */
 	public void bind() {
 		glBindVertexArray(id);
 	}
 
+	/**
+	 * Deletes this VAO
+	 */
 	public void delete() {
 		glDeleteVertexArrays(id);
 	}
 
+	/**
+	 * Returns this VAO's id
+	 * @return int VAO id
+	 */
 	public int getId() {
 		return id;
 	}

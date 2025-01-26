@@ -30,7 +30,7 @@ public class WorldListener extends EventListener {
 	}
 	
 	@EventHandler(event = EntityComponentUpdatedEvent.class, origin="Velocity")
-	public void onVectorUpdate(EntityComponentUpdatedEvent<Vector2fc> e) {
+	public void onVelocityUpdate(EntityComponentUpdatedEvent<Vector2fc> e) {
 		if (!e.getNewValue().equals(new Vector2f(), 0.001f)) {
 			Entity.spatialMap().wakeEntity(e.getComponent().getOwner());
 		}

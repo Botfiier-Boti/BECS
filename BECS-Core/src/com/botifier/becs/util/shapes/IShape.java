@@ -7,6 +7,11 @@ import org.joml.Vector2f;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 
+/**
+ * IShape
+ * 
+ * @author Botifier
+ */
 public interface IShape {
 
 	/**

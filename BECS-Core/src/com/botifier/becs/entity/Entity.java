@@ -1,16 +1,9 @@
 package com.botifier.becs.entity;
 
 import java.awt.Color;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -46,6 +39,9 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 */
 	ConcurrentHashMap<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
 	
+	/**
+	 * Stores the initial values of added components
+	 */
 	ConcurrentHashMap<String, Object> initialComponentValues = new ConcurrentHashMap<>();
 
 	/**
@@ -78,6 +74,12 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 */
 	private int renderingLayer = 0;
 
+	/**
+	 * Entity constructor for rebuilding, initializing and cloning Entities
+	 * 
+	 * @param name String Name of the Entity
+	 * @param uuid UUID Entity's UUID
+	 */
 	private Entity(String name, UUID uuid) {
 		this.name = name;
 		this.uuid = uuid;
@@ -94,6 +96,11 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		this(name, UUID.randomUUID());
 	}
 
+	/**
+	 * Entity initializer
+	 * 
+	 * Used when addEntity is run
+	 */
 	public void init() {}
 	
 	/**
@@ -189,10 +196,15 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @param e Component to add
 	 * @param value value to put
 	 */
-	public void addComponent(String componentName, Object value) {
-		EntityComponent<?> comp = EntityComponentManager.giveComponent(this, componentName, value);
+	public EntityComponent<?> addComponent(String componentName, Object value) {
+		return EntityComponentManager.giveComponent(this, componentName, value);
 	}
 	
+	/**
+	 * Updates a component or adds it if it doesn't exist
+	 * @param componentName String Name of the component
+	 * @param value Object value stored within the component
+	 */
 	public void updateOrAddComponent(String componentName, Object value) {
 		if (components.contains(componentName.toLowerCase())) {
 			EntityComponent<Object> ec = getComponent(componentName);
@@ -201,6 +213,15 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		}
 		
 		addComponent(componentName, value);
+	}
+	
+	/**
+	 * Removes a component from this entity
+	 * @param componentName String Component to removed
+	 * @return EntityComponent\<?\> Removed component
+	 */
+	public EntityComponent<?> removeComponent(String componentName) {
+		return EntityComponentManager.removeComponent(this, componentName);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -232,6 +253,11 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		return dead;
 	}
 
+	/**
+	 * Checks whether or not the entity current has a component
+	 * @param name String Name of the component
+	 * @return boolean Whether or not the entity has the specified component
+	 */
 	public boolean hasComponent(String name) {
 		return components.containsKey(name.toLowerCase());
 	}
@@ -239,7 +265,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Returns the rendering layer of the entity.
 	 * Used for sorting
-	 * @return
+	 * @return int The entity's render layer
 	 */
 	public int getRenderingLayer() {
 		return renderingLayer;
@@ -273,8 +299,13 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		e.destroy();
 	}
 
+	/**
+	 * Gets an Entity by it's UUID
+	 * @param u UUID To use
+	 * @return Entity that belongs to the specified UUID; null if it doesn't exist
+	 */
 	public static Entity getEntity(UUID u) {
-		return entities.get(u);
+		return entities.getOrDefault(u, null);
 	}
 
 	/**
@@ -286,6 +317,10 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		return new HashSet<>(entities.values());
 	}
 
+	/**
+	 * Get all entities as fake copies
+	 * @return Set\<Entity\> fake versions of all entities
+	 */
 	public static Set<Entity> getFalseEntities() {
 		Set<Entity> en = entities.values().stream()
 											.map(k -> k.falseClone())
@@ -379,6 +414,10 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		return renderingLayer < e.renderingLayer ? 1 : renderingLayer > e.renderingLayer ? -1 : 0; //Sorts entities based on their rendering layer.
 	}
 	
+	/**
+	 * Adds an Entity to the entity map
+	 * @param e Entity To add
+	 */
 	public static void addEntity(Entity e) {
 		e.init();
 

@@ -4,6 +4,11 @@ import org.joml.Vector2f;
 
 import com.botifier.becs.util.shapes.Polygon;
 
+/**
+ * CollisionUtil
+ * 
+ * TODO: Document this
+ */
 public class CollisionUtil {
 
 	public static Vector2f projectPolygon(Polygon p, Vector2f axis) {

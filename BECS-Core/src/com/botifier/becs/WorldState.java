@@ -5,7 +5,14 @@ import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.shapes.Polygon;
 
 /**
+ * WorldState
+ * 
  * Class to hold state of the world for rendering
+ * 
+ * TODO: Find alternative methods for this
+ * TODO: Use submaps
+ * 
+ * @author Botifier
  */
 public class WorldState {
 	/**

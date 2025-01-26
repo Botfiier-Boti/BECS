@@ -17,6 +17,13 @@ import com.botifier.becs.entity.EntitySystem;
 import com.botifier.becs.util.Input;
 import com.botifier.becs.util.Math2;
 
+/**
+ * A basic arrow key controller
+ * 
+ * Entities require Position, Velocity, ArrowKeyControlled, and PhysicsEnabled components
+ * 
+ * @author Botifier
+ */
 public class ArrowKeyControlsSystem extends EntitySystem {
 
     /**
@@ -29,7 +36,7 @@ public class ArrowKeyControlsSystem extends EntitySystem {
      * CONFIRM - Space bar
      */
     public ArrowKeyControlsSystem(Game g) {
-    	super(g, "ArrowKeyControlled", "PhysicsEnabled");
+    	super(g, "ArrowKeyControlled", "PhysicsEnabled", "Position", "Velocity");
     	ControlsConfig.addControl("UP", GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP);
 		ControlsConfig.addControl("DOwN", GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN);
 		ControlsConfig.addControl("LEFT", GLFW.GLFW_KEY_A, GLFW.GLFW_KEY_LEFT);
@@ -42,12 +49,16 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		//Gets the Input
 		Input in = Game.getCurrent().getInput();
 
+		//Creates futures for all entities in entities 
 		List<CompletableFuture<Void>> futures = IntStream.range(0, entities.length)
 				.parallel()
 				.mapToObj(i -> CompletableFuture.runAsync(() -> update(entities[i], in)))
 				.collect(Collectors.toList());
 
+		//Creates a combined future
 		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+		
+		//Waits for the futures to complete
 		allOf.join();
 	}
 
@@ -87,8 +98,10 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		}
 
 		if (toAdd.x != 0 || toAdd.y != 0) {
+			//Calculates the angle at which the entity will move
 			float angle = Math2.calcAngle(positionComponent.get(), new Vector2f(toAdd).add(positionComponent.get()));
 
+			//Normalizes the movement
 			toAdd.set(Math.cos(angle), Math.sin(angle));
 		}
 
