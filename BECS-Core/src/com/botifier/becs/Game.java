@@ -435,6 +435,15 @@ public abstract class Game {
 		eventManager.registerListener(wl);
 		worldListenerId.set(wl.getOwner());
 
+		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+			
+			@Override
+			public void uncaughtException(Thread t, Throwable e) {
+				System.out.println(String.format("Thread %s threw an Exception: %s", t.getName(), e.getMessage()));
+				e.printStackTrace();
+			}
+		});
+		
 		init();
 
 		input = new Input(window.getId());
@@ -945,7 +954,7 @@ public abstract class Game {
 															   getWidth() * getRenderer().getZoom(),
 															   getHeight() * getRenderer().getZoom());
 			WorldState ws = new WorldState(camera.toPolygon(), false); //Creates a WorldState 
-
+			getRenderer().refreshWindow();
 			draw(getRenderer(), ws, camera, alpha.get()); //Runs draw functions
 			if (autoDrawBatch) {
 				getRenderer().getAutoBatcher().draw(getRenderer()); //Automatically draws information in the AutoBatcher
