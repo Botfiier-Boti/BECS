@@ -27,6 +27,8 @@ import static org.lwjgl.opengl.GL30.glFramebufferTexture2D;
 import static org.lwjgl.opengl.GL30.glGenFramebuffers;
 import static org.lwjgl.opengl.GL30.glRenderbufferStorage;
 
+import org.lwjgl.opengl.GL11;
+
 import com.botifier.becs.Game;
 import com.botifier.becs.graphics.images.Texture;
 import com.botifier.becs.graphics.shader.Shader;
@@ -53,30 +55,30 @@ public class FBO {
 	 * The Vertex array
 	 */
 	private VAO vao;
-	/**
-	 * The shader locations
-	 */
-	private String vertex, frag;
+
 	/**
 	 * The shader program
 	 */
 	private ShaderProgram program;
+	
+	/**
+	 * Whether or not this fbo was deleted
+	 */
+	private boolean exists = true;
 
 	/**
 	 * FBO constructor
+	 * 
 	 * @param vertex String Vertex shader location
-	 * @param frag String Fragment shader location
+	 * @param frag   String Fragment shader location
 	 */
-	public FBO(String vertex, String frag) {
+	public FBO() {
 		id = glGenFramebuffers();
 		depth = new RBO();
-		this.vertex = vertex;
-		this.frag = frag;
 	}
 
 	/**
-	 * Binds the FrameBuffer
-	 * Redirects rendering to the FrameBuffer image
+	 * Binds the FrameBuffer Redirects rendering to the FrameBuffer image
 	 */
 	public void bind() {
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
@@ -91,86 +93,162 @@ public class FBO {
 
 	/**
 	 * Initializes the FrameBuffer
+	 * 
+	 * @param vertex String Vertex shader location internal
+	 * @param frag   String Fragment shader location internal
 	 * @return FBO itself
 	 */
-	public FBO init() {
-		//Binds the framebuffer
+	public FBO init(String vertex, String frag) {
+
+		// Load the shaders
+		Shader v = Shader.loadShader(GL_VERTEX_SHADER, vertex);
+		Shader f = Shader.loadShader(GL_FRAGMENT_SHADER, frag);
+
+		return this.init(v, f);
+	}
+
+	/**
+	 * Initializes the FrameBuffer
+	 * 
+	 * @param v Shader Vertex shader to use
+	 * @param f Shader Fragment shader to use
+	 * @return FBO itself
+	 */
+	public FBO init(Shader v, Shader f) {
+		// Binds the framebuffer
 		bind();
-		//Generates texures
+		// Generates texures
 		genTextures();
-		//Attaches the framebuffer
+		// Attaches the framebuffer
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBufferTexture.getId(), 0);
 
-		//Obtain the dimensions
+		// Obtain the dimensions
 		int width = Game.getCurrent().getWidth();
 		int height = Game.getCurrent().getHeight();
 
-		//Bind the depth render buffer
+		// Bind the depth render buffer
 		depth.bind();
-		//Set the dimensions of the render buffer
+		// Set the dimensions of the render buffer
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH32F_STENCIL8, width, height);
-		//Attaches the render buffer to the frame buffer
+		// Attaches the render buffer to the frame buffer
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth.getId());
-		//Unbinds the render buffer
+		// Unbinds the render buffer
 		depth.unbind();
 
-		//Checks if the frame buffer is complete
+		// Checks if the frame buffer is complete
 		int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (status != GL_FRAMEBUFFER_COMPLETE) {
-			throw new RuntimeException("Framebuffer incomplete: "+status); 
+			throw new RuntimeException("Framebuffer incomplete: " + status);
 		}
 
-		//Frame buffer dimensions
-		float[] buff = {-1, -1,
-						 1, -1,
-						-1,  1,
-						 1,  1};
+		// Frame buffer dimensions
+		float[] buff = { -1, -1, 1, -1, -1, 1, 1, 1 };
 
-		//Creates and binds a new VAO
+		// Creates and binds a new VAO
 		vao = new VAO();
 		vao.bind();
 
-		//Creates and binds a new VBO on GL_ARRAY_BUFFER
+		// Creates and binds a new VBO on GL_ARRAY_BUFFER
 		vbo = new VBO();
 		vbo.bind(GL_ARRAY_BUFFER);
-		//Uploads the dimension data to the VBO
+		// Uploads the dimension data to the VBO
 		vbo.uploadData(GL_ARRAY_BUFFER, buff, GL_DYNAMIC_DRAW);
-		//Unbinds VAO
+		// Unbinds VAO
 		glEnableVertexAttribArray(0);
-		
-		//Generates the shaders
-		genShader();
-		
-		//Unbinds the frame buffer
+
+		// Generates the shaders
+		genShader(v, f);
+
+		// Unbinds the frame buffer
+		unbind();
+		return this;
+	}
+
+	/**
+	 * Initializes the FrameBuffer
+	 * 
+	 * Shader program must be set up manually.
+	 * Bound vertex shader must have aPos attribute.
+	 * 
+	 * @param sp ShaderProgram ShaderProgram to use
+	 * @return
+	 */
+	public FBO init(ShaderProgram sp) {
+		// Binds the framebuffer
+		bind();
+		// Generates texures
+		genTextures();
+		// Attaches the framebuffer
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBufferTexture.getId(), 0);
+
+		// Obtain the dimensions
+		int width = Game.getCurrent().getWidth();
+		int height = Game.getCurrent().getHeight();
+
+		// Bind the depth render buffer
+		depth.bind();
+		// Set the dimensions of the render buffer
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH32F_STENCIL8, width, height);
+		// Attaches the render buffer to the frame buffer
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth.getId());
+		// Unbinds the render buffer
+		depth.unbind();
+
+		// Checks if the frame buffer is complete
+		int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE) {
+			throw new RuntimeException("Framebuffer incomplete: " + status);
+		}
+
+		// Frame buffer dimensions
+		float[] buff = { -1, -1, 1, -1, -1, 1, 1, 1 };
+
+		// Creates and binds a new VAO
+		vao = new VAO();
+		vao.bind();
+
+		// Creates and binds a new VBO on GL_ARRAY_BUFFER
+		vbo = new VBO();
+		vbo.bind(GL_ARRAY_BUFFER);
+		// Uploads the dimension data to the VBO
+		vbo.uploadData(GL_ARRAY_BUFFER, buff, GL_DYNAMIC_DRAW);
+		// Unbinds VAO
+		glEnableVertexAttribArray(0);
+
+		// Generates the shaders
+		useShaderProgram(sp);
+
+		// Unbinds the frame buffer
 		unbind();
 		return this;
 	}
 
 	/**
 	 * Resizes the FrameBuffer image
-	 * @param width int New width
+	 * 
+	 * @param width  int New width
 	 * @param height int New height
 	 */
 	public void resize(int width, int height) {
-		//Binds the frame buffer
+		// Binds the frame buffer
 		bind();
-		//Binds the frame buffer's texture
+		// Binds the frame buffer's texture
 		frameBufferTexture.bind();
-		//Resizes the frame buffer's texture
+		// Resizes the frame buffer's texture
 		frameBufferTexture.uploadData(width, height, null);
-		//Unbinds the texture
+		// Unbinds the texture
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-		//Binds the render buffer
+		// Binds the render buffer
 		depth.bind();
-		//Updates the buffer dimensions
+		// Updates the buffer dimensions
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH32F_STENCIL8, width, height);
-		//Unbinds the render buffer
+		// Unbinds the render buffer
 		depth.unbind();
-		
-		//Reattach the render buffer
+
+		// Reattach the render buffer
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth.getId());
-		//Unbinds the frame buffer
+		// Unbinds the frame buffer
 		unbind();
 	}
 
@@ -178,102 +256,136 @@ public class FBO {
 	 * Generates the FrameBuffer texture
 	 */
 	public void genTextures() {
-		//Can't generate textures if the texture wasn't created
+		// Can't generate textures if the texture wasn't created
 		if (frameBufferTexture != null) {
 			return;
 		}
-		//Obtains the window dimensions
+		// Obtains the window dimensions
 		int width = Game.getCurrent().getWidth();
-		int height =  Game.getCurrent().getHeight();
-		
-		//Creates a new texture with the supplied dimensions
+		int height = Game.getCurrent().getHeight();
+
+		// Creates a new texture with the supplied dimensions
 		Texture t = Texture.createTexture(width, height, null);
-		
-		//Sets the frame buffer texture variable
+
+		// Sets the frame buffer texture variable
 		frameBufferTexture = t;
 	}
 
 	/**
-	 * Loads the Shaders
-	 * Fragment location: fragColor
-	 * Attributes:
-	 * - aPos (size = 2, stride = 0, offset = 1)
+	 * Loads the Shaders Fragment location: fragColor Attributes: - aPos (size = 2,
+	 * stride = 0, offset = 1)
+	 * 
+	 * @param v Shader Vertex shader to use
+	 * @param f Shader Fragment shader to use
 	 */
-	public void genShader() {
-		//Loads the vertex and fragment shaders
-		Shader v = Shader.loadShader(GL_VERTEX_SHADER, vertex);
-		Shader f = Shader.loadShader(GL_FRAGMENT_SHADER, frag);
-
-		//Creates a new shader program
+	public void genShader(Shader v, Shader f) {
+		// Creates a new shader program
 		program = new ShaderProgram();
-		//Attaches the shaders
+		// Attaches the shaders
 		getShaderProgram().attachShader(v);
 		getShaderProgram().attachShader(f);
-		//Binds fragBuffer to 0
+		// Binds fragBuffer to 0
 		getShaderProgram().bindFragmentDataLocation(0, "fragColor");
-		//Links the shader program
+		// Links the shader program
 		getShaderProgram().link();
 
-		//Use the shader program
+		// Use the shader program
 		getShaderProgram().use();
-		//obtain the aPos attribute location
+		// obtain the aPos attribute location
 		int aPos = getShaderProgram().getAttributeLocation("aPos");
-		//Enable aPos
+		// Enable aPos
 		getShaderProgram().enableVertexAttribute(aPos);
-		//Sets the aPos pointer
+		// Sets the aPos pointer
 		getShaderProgram().pointVertexAttribute(aPos, 2, 0, 0);
 
 	}
 
 	/**
+	 * Uses specified shader program
+	 * 
+	 * Requires aPos attribute in bound vertex shader
+	 * 
+	 * @param sp ShaderProgram To use
+	 */
+	public void useShaderProgram(ShaderProgram sp) {
+		this.program = sp;
+
+		getShaderProgram().use();
+		int aPos = getShaderProgram().getAttributeLocation("aPos");
+		// Enable aPos
+		getShaderProgram().enableVertexAttribute(aPos);
+		// Sets the aPos pointer
+		getShaderProgram().pointVertexAttribute(aPos, 2, 0, 0);
+	}
+
+	/**
 	 * Draws the FrameBuffer
+	 * 
 	 * @param r Renderer to use
 	 */
-	public void draw(Renderer r){
-		//Start using the shader program
+	public void draw(Renderer r) {
+		// Start using the shader program
 		getShaderProgram().use();
 
-		//Sets the color mask
+		// Sets the color mask
 		glColorMask(true, true, true, true);
-		//glClear(GL_COLOR_BUFFER_BIT);
+		// glClear(GL_COLOR_BUFFER_BIT);
 
-		//Updates the fbo_texture uniform
+		// Updates the fbo_texture uniform
 		getShaderProgram().setUniform(getShaderProgram().getUniformLocation("fbo_texture"), 0);
-		//Sets the active texture to GL_TEXTURE0
+		// Sets the active texture to GL_TEXTURE0
 		glActiveTexture(GL_TEXTURE0);
-		//Binds the frameBuffer texture
+		// Binds the frameBuffer texture
 		frameBufferTexture.bind();
 
-		//Binds the VAO
+		// Binds the VAO
 		vao.bind();
 
-		//Binds the VBO to GL_ARRAY_BUFFER
+		// Binds the VBO to GL_ARRAY_BUFFER
 		vbo.bind(GL_ARRAY_BUFFER);
 
-		//Draws the frame buffer texture
+		// Draws the frame buffer texture
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-		//Unbinds the buffer, texture and VAO
+		// Unbinds the buffer, texture and VAO
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glEnableVertexAttribArray(0);
 
+	}
+	
+	public void uploadVBOData(float[] buff) {
+		vbo.bind(GL_ARRAY_BUFFER);
+		vbo.uploadData(GL_ARRAY_BUFFER, buff, GL_DYNAMIC_DRAW);
+	}
+	
+	/**
+	 * Clears the FrameBuffer texture
+	 */
+	public void clearTexture() {
+		bind();
+		GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+		unbind();
 	}
 
 	/**
 	 * Deletes the FrameBuffer and everything associated
 	 */
 	public void delete() {
-		glDeleteFramebuffers(id);
-		getFrameBufferTexture().delete();
-		vbo.delete();
-		vao.delete();
-		depth.delete();
-		getShaderProgram().delete();
+		if (exists) {
+			glDeleteFramebuffers(id);
+			getFrameBufferTexture().delete();
+			vbo.delete();
+			vao.delete();
+			depth.delete();
+			getShaderProgram().delete();
+			exists = false;
+		}
 	}
 
 	/**
 	 * Returns the FrameBuffer texture
+	 * 
 	 * @return Texture FrameBuffer texture
 	 */
 	public Texture getFrameBufferTexture() {
@@ -282,6 +394,7 @@ public class FBO {
 
 	/**
 	 * Returns the ShaderProgram
+	 * 
 	 * @return ShaderProgram ShaderProgram
 	 */
 	public ShaderProgram getShaderProgram() {

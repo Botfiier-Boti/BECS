@@ -189,7 +189,7 @@ public class Image {
 	 * @param y float Y
 	 */
 	public void draw(Renderer renderer, float x, float y) {
-		draw(renderer,x,y, z, c, ResourceManager.getShader(sp));
+		draw(renderer,x,y, z, c, ResourceManager.getShaderProgram(sp));
 	}
 
 	/**
@@ -201,7 +201,7 @@ public class Image {
 	 * @param c Color Color filter
 	 */
 	public void draw(Renderer renderer, float x, float y, float z, Color c) {
-		draw(renderer,x,y, z,c, ResourceManager.getShader(sp));
+		draw(renderer,x,y, z,c, ResourceManager.getShaderProgram(sp));
 	}
 
 	/**
@@ -470,7 +470,7 @@ public class Image {
 	 */
 	public ShaderProgram getShaderProgram() {
 		if (buffer == null && sp != null)
-			buffer = ResourceManager.getShader(sp);
+			buffer = ResourceManager.getShaderProgram(sp);
 		return buffer;
 	}
 
