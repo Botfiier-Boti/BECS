@@ -30,6 +30,7 @@ public abstract class EntitySystem {
 	 */
 	public EntitySystem(Game g) {
 		requiredComponents = new String[0];
+		this.g = g;
 	}
 
 	/**
@@ -63,9 +64,6 @@ public abstract class EntitySystem {
 			return Entity.getEntities();
 		}
 		Set<Entity> hold = new HashSet<>();
-		
-		if (requiredComponents.length == 0)
-			return hold;
 		
 		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
 		hold = entities.parallelStream().filter(e -> {

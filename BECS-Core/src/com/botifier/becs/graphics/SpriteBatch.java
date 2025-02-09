@@ -63,7 +63,7 @@ public class SpriteBatch {
 	/**
 	 * A reusable rectangle
 	 */
-	private RotatableRectangle reuseRectangle;
+	private RotatableRectangle reuseRectangle = null;
 
 	/**
 	 * SpriteBatch constructor
@@ -730,7 +730,7 @@ public class SpriteBatch {
 	 */
 	private RotatableRectangle getReuseableRectangle(Vector2f center, float width, float height, float rotation) {
 		if (reuseRectangle == null) {
-			return new RotatableRectangle(center, width, height, rotation);
+			return reuseRectangle = new RotatableRectangle(center, width, height, rotation);
 		}
 		reuseRectangle.setWidth(width);
 		reuseRectangle.setHeight(height);

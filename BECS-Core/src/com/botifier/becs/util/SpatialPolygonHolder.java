@@ -22,7 +22,7 @@ import com.botifier.becs.util.shapes.RotatableRectangle;
  * 
  * @author Botifier
  */
-public class SpatialPolygonHolder {
+public class SpatialPolygonHolder implements Cloneable {
 	final int cellSize;
 	final Entity owner;
 	/**

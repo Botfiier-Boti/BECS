@@ -103,7 +103,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * 
 	 * Used when addEntity is run
 	 */
-	public void init() {}
+	public Entity init() {return this;}
 	
 	/**
 	 * "Kills" the entity by marking them as dead and removing them from the entity map
@@ -113,7 +113,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 
 		Game.getCurrent().getEventManager().executeEvent(new EntityDeathEvent(this.falseClone()));
 		
-		if (entities.contains(uuid))
+		if (entities.containsKey(uuid))
 			entities.remove(uuid);
 		for (String s : components.keySet()) {
 			removeComponent(s);
@@ -215,7 +215,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @param value Object value stored within the component
 	 */
 	public void updateOrAddComponent(String componentName, Object value) {
-		if (components.contains(componentName.toLowerCase())) {
+		if (components.containsKey(componentName.toLowerCase())) {
 			EntityComponent<Object> ec = getComponent(componentName);
 			ec.set(value);
 			return;
@@ -427,11 +427,8 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * Adds an Entity to the entity map
 	 * @param e Entity To add
 	 */
-	public static void addEntity(Entity e) {
-		if (!entities.contains(e.getUUID())) {
-			e.init();
-			entities.put(e.getUUID(), e);
-		}
+	public static Entity addEntity(Entity e) {
+		return entities.putIfAbsent(e.getUUID(), e.init());
 	}
 
 }

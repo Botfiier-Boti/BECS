@@ -113,7 +113,7 @@ public class HelloWorld extends Game{
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override
-				public void init() {
+				public Entity init() {
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-600, -200+localI*i2.getHeight(), i2.getWidth(), i2.getHeight());
 					e.setShape(rr);
@@ -134,6 +134,7 @@ public class HelloWorld extends Game{
 						}
 					});
 					this.addComponent("Solid", true);
+					return this;
 				}
 			};
 			
@@ -144,7 +145,7 @@ public class HelloWorld extends Game{
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override
-				public void init() {
+				public Entity init() {
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-600, -600+localI*i2.getHeight()-1000, i2.getWidth(), i2.getHeight());
 					e.setShape(rr);
@@ -154,6 +155,7 @@ public class HelloWorld extends Game{
 					this.addComponent("CollisionShape", rr);
 					this.addComponent("Collidable", true);
 					this.addComponent("Solid", true);
+					return this;
 				}
 			};
 			Entity.addEntity(e2);
@@ -162,7 +164,7 @@ public class HelloWorld extends Game{
 			final int localI = i;
 			wew = new Entity("Davy") {
 				@Override
-				public void init() {
+				public Entity init() {
 					float angle = (float) Math.toRadians(22.5f);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-400+((float)Math.cos(angle))*localI*i2.getWidth(), -400+((float)Math.sin(angle))*localI*i2.getHeight(), i2.getWidth(), i2.getHeight());
@@ -174,6 +176,7 @@ public class HelloWorld extends Game{
 					this.addComponent("CollisionShape", rr);
 					this.addComponent("Collidable", true);
 					this.addComponent("Solid", true);
+					return this;
 				}
 			};
 			Entity.addEntity(wew);
@@ -183,7 +186,7 @@ public class HelloWorld extends Game{
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override
-				public void init() {
+				public Entity init() {
 					Image e = new Image(i2);
 					e.setScale(0.2f);
 					RotatableRectangle rr =  new RotatableRectangle(-800+localI*-e.getWidth(), -400, e.getWidth(), e.getHeight());
@@ -200,6 +203,7 @@ public class HelloWorld extends Game{
 					addComponent("Solid", true);
 					addComponent("PhysicsEnabled", new PhysicsListener(e.getUUID()));
 					//addComponent("ArrowKeyControlled", true);
+					return this;
 				}
 			};
 			Entity.addEntity(e2);

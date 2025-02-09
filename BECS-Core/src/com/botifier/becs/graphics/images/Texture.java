@@ -272,11 +272,9 @@ public class Texture {
 			t.location = "**internal**:" + t.hashCode();
 		else
 			t.location = location;
-		if (!textureLocations.containsKey(t.location)) {
-			textureLocations.put(t.location, t);
-		}
 
-		return t;
+		Texture old = textureLocations.putIfAbsent(t.location, t);
+		return old != null ? old : t;
 	}
 
 	/**
@@ -302,11 +300,9 @@ public class Texture {
 
 		t.image = data;
 		t.location = "**internal**:" + (t.hashCode());
-		if (!textureLocations.containsKey(t.location)) {
-			textureLocations.put(t.location, t);
-		}
 
-		return t;
+		Texture old = textureLocations.putIfAbsent(t.location, t);
+		return old != null ? old : t;
 	}
 
 	/**

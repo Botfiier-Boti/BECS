@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -79,7 +80,7 @@ public class PhysicsSystem extends EntitySystem {
      * The current physics tick
      * Great for timing
      */
-    private long physicsTick = 0;
+    private AtomicLong physicsTick = new AtomicLong(0);
 
     /**
      * Physics System constructor
@@ -123,7 +124,7 @@ public class PhysicsSystem extends EntitySystem {
 		allOf.join();
 
 		//Proceed to the next physics tick
-		physicsTick++;
+		physicsTick.getAndIncrement();
 	}
 
 	/**
@@ -380,8 +381,8 @@ public class PhysicsSystem extends EntitySystem {
 		//Handles snap based movement
 		long nextMove = snappyComponent.get();
 
-		p.x  = (int)(p.x/32)*32;
-		p.y =  (int)(p.y/32)*32;
+		p.set((int)(p.x/32)*32, (int)(p.y/32)*32);
+		
 		if (nextMove <= getPhysicsTick()) {
 			if (hasComponent(e, "CollisionShape")) {
 				EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
@@ -393,16 +394,16 @@ public class PhysicsSystem extends EntitySystem {
 		}
 
 		if (v.x < 32 && v.x > 0) {
-			v.x = 32;
+			v.setComponent(0, 32); // x
 		}
 		if (v.y < 32 && v.y > 0) {
-			v.y = 32;
+			v.setComponent(1, 32); // y
 		}
 		if (v.x > -32 && v.x < 0) {
-			v.x = -32;
+			v.setComponent(0, -32); // x
 		}
 		if (v.y > -32 && v.y < 0) {
-			v.y = -32;
+			v.setComponent(0, -32); // y
 		}
 
 		if (v.length() > 0) {
@@ -521,7 +522,7 @@ public class PhysicsSystem extends EntitySystem {
 	 * @return long Current tick
 	 */
 	public long getPhysicsTick() {
-		return physicsTick;
+		return physicsTick.get();
 	}
 
 	/**

@@ -129,7 +129,10 @@ public class SpatialEntityMap {
 	 */
 	public boolean addEntity(Entity e) {
 		int state = 0;
-		if (e == null || contains(e)) {
+		if (e == null) {
+			return false;
+		}
+		if (contains(e)) {
 			state = removeEntity(e);
 		}
 		EntityComponent<Shape> s = e.getComponent("CollisionShape");

@@ -28,6 +28,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -78,7 +80,7 @@ public abstract class Game {
 	/**
 	 * Debug mode
 	 */
-	private static boolean debug = false;
+	private static AtomicBoolean debug = new AtomicBoolean(false);
 
 	/**
 	 * Current active game
@@ -176,12 +178,12 @@ public abstract class Game {
 	/**
 	 * Window width
 	 */
-	private int width;
+	private AtomicInteger width = new AtomicInteger(0);
 
 	/**
 	 * Window height
 	 */
-	private int height;
+	private AtomicInteger height = new AtomicInteger(0);
 
 	/**
 	 * Initial window width
@@ -208,7 +210,7 @@ public abstract class Game {
 	/**
 	 * How many ticks have occurred since the game started.
 	 */
-	private long ticksAlive;
+	private AtomicLong ticksAlive = new AtomicLong(0);
 
 	/**
 	 * Interval
@@ -261,13 +263,13 @@ public abstract class Game {
 	 */
 	public Game(String title, int width, int height, boolean vsync, boolean resizable, boolean noLock) {
 		this.title = title;
-		this.width = width;
-		this.height = height;
 		this.iWidth = width;
 		this.iHeight = height;
 		this.vsync = vsync;
 		this.resizable = resizable;
 		this.noLock = noLock;
+		this.setWidth(width);
+		this.setHeight(height);
 	}
 
 	/**
@@ -279,14 +281,7 @@ public abstract class Game {
 	 * @param resizable Enable/disable window resizing
 	 */
 	public Game(String title, int width, int height, boolean vsync, boolean resizable) {
-		this.title = title;
-		this.width = width;
-		this.height = height;
-		this.iWidth = width;
-		this.iHeight = height;
-		this.vsync = vsync;
-		this.resizable = resizable;
-		this.noLock = false;
+		this(title,width,height,vsync,resizable, false);
 	}
 
 	/**
@@ -356,7 +351,7 @@ public abstract class Game {
 		}
 		current = this;
 
-		window = new Window(title, width, height, resizable, vsync);
+		window = new Window(title, getWidth(), getHeight(), resizable, vsync);
 		
 		glfwMakeContextCurrent(window.getId());
 		
@@ -456,7 +451,7 @@ public abstract class Game {
 	private void procLoop() {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-		if (debug) {
+		if (isDebug()) {
 			GL43.glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, (IntBuffer) null, false);
 			GLUtil.setupDebugMessageCallback();
 		}
@@ -500,16 +495,14 @@ public abstract class Game {
 	@Deprecated
 	private void loop() {
 		float accumulator = 0;
-		boolean noLock = this.noLock;
 		while (running.get()) {
 			t.update();
-			ticksAlive++;
+			ticksAlive.incrementAndGet();
 			delta.set(t.getDelta());
 			accumulator += delta.get();
 			try {
-				if (!noLock) {
-					l.lock();
-				}
+
+				l.lock();
 				int updates = 0;
 				while (accumulator > interval && updates < 5) {
 					update();
@@ -526,12 +519,11 @@ public abstract class Game {
 					accumulator = 0;
 				}
 
-				if (!noLock) {
-					l.unlock();
-				}
+
 				alpha.set(accumulator/interval);
 				//getInput().purgeUnconsumedKeys();
 			} finally {
+				l.unlock();
 				try {
 					Thread.sleep(1);
 				} catch (InterruptedException e) {
@@ -556,7 +548,7 @@ public abstract class Game {
 		GL.setCapabilities(window.getGLCapabilities());
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-		if (debug) {
+		if (isDebug()) {
 			GL43.glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, (IntBuffer) null, false);
 			GLUtil.setupDebugMessageCallback();
 		}
@@ -565,18 +557,13 @@ public abstract class Game {
 
 		while (running.get()) {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			if (!noLock) {
-				l.lock();
-			}
+			//l.lock();
 			RotatableRectangle camera = new RotatableRectangle(getRenderer().getCameraCenter().x, getRenderer().getCameraCenter().y, getWidth() * getRenderer().getZoom(), getHeight() * getRenderer().getZoom());
 			WorldState ws = new WorldState(camera.toPolygon(), noLock);
 
 			draw(getRenderer(), ws, camera, alpha.get());
 			if (autoDrawBatch) {
 				getRenderer().getAutoBatcher().draw(getRenderer());
-			}
-			if (!noLock) {
-				l.unlock();
 			}
 			if (getRenderer().hasRendered()) {
 				glfwSwapBuffers(window.getId());
@@ -588,6 +575,7 @@ public abstract class Game {
 			}
 			getRenderer().resetRenderStatus();
 			t.updateFPS();
+			//l.unlock();
 		}
 		exit();
 		renderer.destroy();
@@ -599,7 +587,7 @@ public abstract class Game {
 	 * @param width Window width
 	 */
 	public void setWidth(int width) {
-		this.width = width;
+		this.width.set(width);;
 	}
 
 	/**
@@ -607,7 +595,7 @@ public abstract class Game {
 	 * @param height Window height
 	 */
 	public void setHeight(int height) {
-		this.height = height;
+		this.height.set(height);;
 	}
 
 	/**
@@ -702,7 +690,7 @@ public abstract class Game {
 	 * @param debug
 	 */
 	public static void setDebug(boolean debug) {
-		Game.debug = debug;
+		Game.debug.set(debug);;
 	}
 
 	/**
@@ -710,7 +698,7 @@ public abstract class Game {
 	 * @return Debug
 	 */
 	public static boolean isDebug() {
-		return debug;
+		return debug.get();
 	}
 
 	/**
@@ -774,7 +762,7 @@ public abstract class Game {
 	 * @return Width
 	 */
 	public int getWidth() {
-		return width;
+		return width.get();
 	}
 
 	/**
@@ -782,7 +770,7 @@ public abstract class Game {
 	 * @return Height
 	 */
 	public int getHeight() {
-		return height;
+		return height.get();
 	}
 
 	/**
@@ -814,7 +802,7 @@ public abstract class Game {
 	 * @return
 	 */
 	public long getCurrentTick() {
-		return ticksAlive;
+		return ticksAlive.get();
 	}
 
 	/**
@@ -913,20 +901,25 @@ public abstract class Game {
 			}
 			Thread.currentThread().setName("Update Thread");
 			t.update(); //Update the timer
-			ticksAlive++; //Add to the tick tracker
 			delta.set(t.getDelta()); //set delta
 			if (!noLock) {
 				l.lock(); //Obtains a lock if locking is enabled
 			}
-			update(); //Performs an update
-			t.updateUPS(); //Updates UPS counter (Updates Per Second)
-			systems.stream().parallel().forEach(system -> { // Runs all systems in parallel
-				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); //Obtains all valid entities for a system
-				system.apply(entities); //Applies the system to all of those entities
-			});
-			
-			if (!noLock) {
-				l.unlock(); //Unlocks if locking is enabled
+			try {
+				update(); //Performs an update
+				t.updateUPS(); //Updates UPS counter (Updates Per Second)
+				systems.stream().parallel().forEach(system -> { // Runs all systems in parallel
+					Entity[] entities = system.getValidEntities().toArray(Entity[]::new); //Obtains all valid entities for a system
+					system.apply(entities); //Applies the system to all of those entities
+				});
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					l.unlock(); //Unlocks if locking is enabled
+				} finally {
+					ticksAlive.incrementAndGet(); //Add to the tick tracker
+				}
 			}
 		}
 	}
@@ -945,29 +938,36 @@ public abstract class Game {
 			glfwMakeContextCurrent(window.getId()); //Obtains context
 			GL.setCapabilities(window.getGLCapabilities()); //Obtains the current window's GL Capabilities
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
-			if (!noLock) {
-				l.lock(); // Locks if locking is enabled
+			
+			try {
+				if (!noLock) {
+					l.lock(); // Locks if locking is enabled
+				}
+				//A rectangle representing the camera, for culling purposes
+				RotatableRectangle camera = new RotatableRectangle(getRenderer().getCameraCenter().x,
+																   getRenderer().getCameraCenter().y,
+																   getWidth() * getRenderer().getZoom(),
+																   getHeight() * getRenderer().getZoom());
+				WorldState ws = new WorldState(camera.toPolygon(), false); //Creates a WorldState 
+				getRenderer().refreshWindow();
+				draw(getRenderer(), ws, camera, alpha.get()); //Runs draw functions
+				if (autoDrawBatch) {
+					getRenderer().getAutoBatcher().draw(getRenderer()); //Automatically draws information in the AutoBatcher
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					l.unlock(); // Unlocks if locking is enabled
+				} finally {
+					if (getRenderer().hasRendered()) {
+						glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
+					}
+					getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
+													   // Draws happened on this frame
+					t.updateFPS(); // Updates the FPS counter
+				}
 			}
-			//A rectangle representing the camera, for culling purposes
-			RotatableRectangle camera = new RotatableRectangle(getRenderer().getCameraCenter().x,
-															   getRenderer().getCameraCenter().y,
-															   getWidth() * getRenderer().getZoom(),
-															   getHeight() * getRenderer().getZoom());
-			WorldState ws = new WorldState(camera.toPolygon(), false); //Creates a WorldState 
-			getRenderer().refreshWindow();
-			draw(getRenderer(), ws, camera, alpha.get()); //Runs draw functions
-			if (autoDrawBatch) {
-				getRenderer().getAutoBatcher().draw(getRenderer()); //Automatically draws information in the AutoBatcher
-			}
-			if (!noLock) {
-				l.unlock(); // Unlocks if locking is enabled
-			}
-			if (getRenderer().hasRendered()) {
-				glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
-			}
-			getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
-											   // Draws happened on this frame
-			t.updateFPS(); // Updates the FPS counter
 		}
 
 	}

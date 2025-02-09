@@ -119,10 +119,13 @@ public class EventManager {
 			executeEvent(e, origin);
 		}
 		
+		if (uuids == null)
+			uuids = new UUID[0];
+		
 		for (UUID uuid : uuids) {
 			if (uuid == null)
 				continue;
-			List<EventListener> listeners = listenerOwners.getOrDefault(uuid, null);
+			List<EventListener> listeners = listenerOwners.getOrDefault(uuid, new ArrayList<>());
 			if (listeners == null)
 				continue;
 			for (EventListener el : listeners) {

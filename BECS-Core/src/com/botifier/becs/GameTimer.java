@@ -3,6 +3,7 @@ package com.botifier.becs;
 import static org.lwjgl.glfw.GLFW.glfwGetTime;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 /*
  * The MIT License (MIT)
  *
@@ -31,13 +32,13 @@ public class GameTimer {
     /**
      * The last time getDelta was called
      */
-    private double lastLoop;
+    private volatile double lastLoop;
 
     /**
      * The amount of time since last update
      * Used to determine UPS and FPS
      */
-    private float timeCount;
+    private AtomicReference<Float> timeCount = new AtomicReference<Float>(0f);
 
     /**
      * The current FPS
@@ -82,7 +83,7 @@ public class GameTimer {
         double time = getTime();
         float delta = (float) (time - lastLoop);
         lastLoop = time;
-        timeCount += delta;
+        timeCount.getAndAccumulate(delta, (x, y) -> x + y);
         return delta;
     }
 
@@ -104,14 +105,14 @@ public class GameTimer {
      * Sets the current FPS and UPS every second
      */
     public void update() {
-        if (timeCount > 1f) {
+        if (timeCount.get() > 1f) {
             fps.set(fpsCount.get());
             fpsCount.set(0);
 
             ups.set(upsCount.get());
             upsCount.set(0);
 
-            timeCount--;
+            timeCount.accumulateAndGet(-1f, (x, y) -> x + y);
         }
     }
 
