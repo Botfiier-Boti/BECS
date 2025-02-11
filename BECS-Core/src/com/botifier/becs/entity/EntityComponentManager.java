@@ -32,6 +32,8 @@ public class EntityComponentManager {
 	 */
 	private static final ConcurrentHashMap<Class<?>, Class<? extends EntityComponent<?>>> overrideMap = new ConcurrentHashMap<>();
 	
+	private static final ConcurrentHashMap<Class<?>, Set<Class<?>>> compatabilityCache = new ConcurrentHashMap<>();
+	
 	/**
 	 * Initializes basic components
 	 */
@@ -72,6 +74,14 @@ public class EntityComponentManager {
 		}
 
 		nameMap.put(name.toLowerCase(), dataType);
+		
+		//Ensure the class is loaded into memory
+		try {
+			if (!dataType.isPrimitive())
+				Class.forName(dataType.getName());
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -110,25 +120,23 @@ public class EntityComponentManager {
 		
 		if (en == null)
 			return null;
-		
 		Class<?> type = nameMap.getOrDefault(componentName.toLowerCase(), null);
 		
 		if (type == null)
 			throw new IllegalArgumentException(String.format("No type mapping for for component %s", lower));
 		
-		if (type.isAssignableFrom(en.get().getClass()) 
-				|| getWrapperClass(type).isAssignableFrom(en.get().getClass())
-				|| getPrimitiveClass(type).isAssignableFrom(en.get().getClass()))
+		if (!isCompatibleType(type, en.getDataType()))
 			throw new ClassCastException(String.format("%s is not compatible with %s", en.get().getClass().getSimpleName(), type.getSimpleName()));
 		
 		e.components.remove(lower);
 		componentMap.get(lower).remove(e);
-		
+
 		@SuppressWarnings("unchecked")
 		EntityComponent<T> ent =  new EntityComponent<T>(lower, e, (T) en.get());
 		Game.getCurrent().getEventManager().executeEventOn(new EntityComponentRemovedEvent<T>(e, ent),
 				   en.getName(),
 				   e.getUUID());
+
 		return ent;
 	}
 
@@ -153,9 +161,7 @@ public class EntityComponentManager {
 		
 		
 		Class<? > type = nameMap.getOrDefault(componentName.toLowerCase(), null);
-		if (!type.isAssignableFrom(data.getClass()) 
-				&& !getWrapperClass(type).isAssignableFrom(data.getClass())
-				&& !getPrimitiveClass(type).isAssignableFrom(data.getClass()))
+		if (!isCompatibleType(type, data.getClass()))
 			throw new ClassCastException(String.format("%s is not compatible with %s", data.getClass().getSimpleName(), type.getSimpleName()));
 		
 		if (clazz == null) {
@@ -237,6 +243,31 @@ public class EntityComponentManager {
 	    if (primitiveType == Byte.class) return byte.class;
 	    if (primitiveType == Short.class) return short.class;
 	    return primitiveType;
+	}
+	
+	private static Class<?> resolveType(Class<?> clazz) {
+		if (clazz.isPrimitive()) return getWrapperClass(clazz);
+		return getPrimitiveClass(clazz);
+	}
+	
+	
+	private static boolean isCompatibleType(Class<?> expected, Class<?> actual) {
+		Set<Class<?>> compat = compatabilityCache
+				.computeIfAbsent(expected, type -> {
+					Set<Class<?>> compatibleTypes = ConcurrentHashMap.newKeySet();
+					compatibleTypes.add(type);
+					compatibleTypes.add(resolveType(type));
+					return compatibleTypes;
+				});
+		
+		boolean contains = compat.contains(actual);
+		if (!contains && expected.isAssignableFrom(actual)) {
+			compat.add(actual);
+			contains = true;
+		}
+		
+		return contains;
+		
 	}
 }
 

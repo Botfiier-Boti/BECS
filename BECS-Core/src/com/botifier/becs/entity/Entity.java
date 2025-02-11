@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 
 import org.joml.Vector2f;
 
+import com.botifier.becs.Game;
+import com.botifier.becs.events.EntityDeathEvent;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.SpatialEntityMap;
@@ -62,7 +64,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Whether or not this entity's sprites should be automatically batched
 	 */
-	private boolean autoBatch = false;
+	private boolean autoBatch = true;
 
 	/**
 	 * Whether or not the Entity is a ruse
@@ -108,11 +110,15 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 */
 	public void destroy() {
 		dead = true;
+
+		Game.getCurrent().getEventManager().executeEvent(new EntityDeathEvent(this.falseClone()));
+		
 		if (entities.contains(uuid))
 			entities.remove(uuid);
 		for (String s : components.keySet()) {
 			removeComponent(s);
 		}
+		
 	}
 
 	/**
@@ -422,9 +428,8 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @param e Entity To add
 	 */
 	public static void addEntity(Entity e) {
-		e.init();
-
 		if (!entities.contains(e.getUUID())) {
+			e.init();
 			entities.put(e.getUUID(), e);
 		}
 	}

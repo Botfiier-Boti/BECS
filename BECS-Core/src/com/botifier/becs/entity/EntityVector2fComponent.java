@@ -3,7 +3,6 @@ package com.botifier.becs.entity;
 import java.util.function.UnaryOperator;
 
 import org.joml.Vector2f;
-import org.joml.Vector2fc;
 
 import com.botifier.becs.Game;
 import com.botifier.becs.events.EntityComponentUpdatedEvent;

@@ -112,6 +112,9 @@ public class EntityComponent<T> implements Cloneable {
 		return owner != null ? owner.getUUID() : null;
 	}
 
+	public Class<?> getDataType() {
+		return type;
+	}
 	@Override
 	public EntityComponent<T> clone() {
 		return new EntityComponent<T>(name, owner, information.get());

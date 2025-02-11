@@ -2,6 +2,8 @@ package com.botifier.becs.tests;
 
 
 import java.awt.Color;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +39,7 @@ import com.botifier.becs.util.CollisionUtil.PolygonOutput;
 import com.botifier.becs.util.EntityRunnable;
 import com.botifier.becs.util.ParameterizedRunnable;
 import com.botifier.becs.util.SpatialEntityMap;
+import com.botifier.becs.util.render.Camera;
 import com.botifier.becs.util.shapes.Circle;
 import com.botifier.becs.util.shapes.Line;
 import com.botifier.becs.util.shapes.Polygon;
@@ -52,6 +55,7 @@ public class HelloWorld extends Game{
 	float dir = 1;
 	int size = 0;
 	boolean dire = false;
+	Entity wew;
 	Entity e;
 	Entity center;
 	AutoBatcher auto = new AutoBatcher();
@@ -64,9 +68,10 @@ public class HelloWorld extends Game{
 	Circle c;
 	Line temp;
 	ArrayList<Vector2f> previousLocs = new ArrayList<>();
+	Camera camera;
 
 	public HelloWorld() {
-		super("Hello World", 800, 800, false, true, true);
+		super("Hello World", 800, 800, true, true, false);
 	}
 
 	@Override
@@ -81,7 +86,7 @@ public class HelloWorld extends Game{
 
 		//System.out.println("Hello World! LWJGL Java "+Version.getVersion());
 
-		fbo = new FBO("framebuffer.vert", "framebuffer.frag").init();
+		//fbo = new FBO("framebuffer.vert", "framebuffer.frag").init();
 
 		i = new Image("Tile.png");
 		i.setScale(1f);
@@ -89,6 +94,12 @@ public class HelloWorld extends Game{
 		i2.setScale(0.5f);
 		//i2.setShaderProgram(sp);
 		i3 = new Image("WhitePixel.png");
+		
+		try {
+			i2.getTexture().write(new File("froggy.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 
 		Sound so = Sound.createSound("sounds/alien_crow.wav", false, true);
@@ -149,7 +160,7 @@ public class HelloWorld extends Game{
 		}
 		for (int i = 0; i < 1; i++) {
 			final int localI = i;
-			Entity e2 = new Entity("Davy") {
+			wew = new Entity("Davy") {
 				@Override
 				public void init() {
 					float angle = (float) Math.toRadians(22.5f);
@@ -165,7 +176,7 @@ public class HelloWorld extends Game{
 					this.addComponent("Solid", true);
 				}
 			};
-			Entity.addEntity(e2);
+			Entity.addEntity(wew);
 		}
 		
 		IntStream.range(0, 10000).parallel().forEach(i -> {
@@ -240,8 +251,11 @@ public class HelloWorld extends Game{
 			temp = new Line(0, 0, 1, 1);
 		}
 
-
-		getRenderer().setZoom(4f);
+		
+		camera = new Camera(this, new Vector2f(0, 0), this.getWidth(), this.getHeight());
+		camera.setFollowEntity(center);
+		
+		getRenderer().setZoom(1f);
 		getRenderer().setCameraCenter(new Vector2f(0, 0));
 	}
 
@@ -271,20 +285,25 @@ public class HelloWorld extends Game{
 
 		//if (posComp.get().x <);
 
+		if (getInput().isKeyPressed(GLFW.GLFW_KEY_C)) {
+			wew.removeComponent("Position");
+		}
+		
 		setTitle("FPS: "+getTimer().getFPS()+", UPS: "+getTimer().getUPS());
 	}
 
 	@Override
 	public void draw(Renderer r, WorldState state, RotatableRectangle camera, float alpha) {
-
-		if (center != null) {
+		this.camera.draw(r);
+		
+		/*if (center != null) {
 			if (center.hasComponent("Position")) {
 				EntityComponent<Vector2f> posComp = center.getComponent("Position");
 				Vector2f v = posComp.get();
 				center.getComponent("Position").get();
-				//r.setCameraCenter(v);
+				r.setCameraCenter(v);
 			}
-		}
+		}*/
 
 		//i.drawBatched(getRenderer(), vs);
 
@@ -298,8 +317,8 @@ public class HelloWorld extends Game{
 
 		//i.drawBatched(r, vs);
 
-		SpatialEntityMap sem = state.sem;
-		Set<Entity> draw = sem.getEntitiesIn(camera.toPolygon());
+		//SpatialEntityMap sem = state.sem;
+		//Set<Entity> draw = sem.getEntitiesIn(camera.toPolygon());
 		//Image.WHITE_PIXEL.bind();
 		//r.begin();
 		/*
@@ -308,10 +327,10 @@ public class HelloWorld extends Game{
 			r.getAutoBatcher().add(Image.WHITE_PIXEL, rr, Color.yellow, -2);
 		});*/
 		//r.end();
-		draw.stream().forEach(e -> {
+		/*draw.stream().forEach(e -> {
 						  		e.setAutoBatch(true);
 						  		e.draw(r);
-						  });
+						  });*/
 
 		//renderDebugCollisions(r, sem);
 		/*

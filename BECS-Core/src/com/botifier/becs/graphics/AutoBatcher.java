@@ -4,11 +4,6 @@ import java.awt.Color;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.joml.Vector2f;
-import org.lwjgl.opengl.GL;
-import org.lwjgl.opengl.GLCapabilities;
-
-import com.botifier.becs.Game;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.graphics.images.Texture;
 import com.botifier.becs.util.shapes.Shape;
