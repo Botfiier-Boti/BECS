@@ -39,12 +39,12 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * List of current components for easy access
 	 * Won't contain components not added via addComponent()
 	 */
-	ConcurrentHashMap<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
+	protected ConcurrentHashMap<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
 	
 	/**
 	 * Stores the initial values of added components
 	 */
-	ConcurrentHashMap<String, Object> initialComponentValues = new ConcurrentHashMap<>();
+	protected ConcurrentHashMap<String, Object> initialComponentValues = new ConcurrentHashMap<>();
 
 	/**
 	 * Entity name

@@ -49,11 +49,14 @@ public class PhysicsConfig implements IConfig {
 	 * @return The value cast as T
 	 * @throws ClassCastException
 	 */
-	@SuppressWarnings("unchecked")
-	public static <T> T getT(String name) throws ClassCastException {
+	public static <T> T getT(String name, Class<T> target) {
 		Object o = getValue(name); //I wish casting generic classes was less of a pain
-
-		return (T) o;
+		
+		if (target.isInstance(o)) {
+			return target.cast(o);
+		} else {
+			throw new ClassCastException("Cannot cast object to "+target.getName());
+		}
 	}
 
 	/**
