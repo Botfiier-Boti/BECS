@@ -3,7 +3,6 @@ package com.botifier.becs.graphics;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.GL_LINE_SMOOTH;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
@@ -711,6 +710,7 @@ public class Renderer {
 		int width = Game.getCurrent().getWidth(), height = Game.getCurrent().getHeight();
 
 		projection = new Matrix4f().ortho(0, width * getZoom(), 0, height * getZoom(), 100, -100);
+		projection.translate(center);
 		setProjectionMatrix(program, projection);
 		GL11.glViewport(0, 0, Game.getCurrent().getWidth(), Game.getCurrent().getHeight());
 	}
@@ -736,7 +736,7 @@ public class Renderer {
 	public void tempResetZoom() {
 
 		int width = Game.getCurrent().getWidth(), height = Game.getCurrent().getHeight();
-		useZoom = false;
+		//useZoom = false;
 		Matrix4f projection = new Matrix4f().ortho2D(0, width, 0, height);
 		projection.setTranslation(center);
 		updateProjectionMatrix(program, projection);
@@ -752,6 +752,21 @@ public class Renderer {
 		int width = Game.getCurrent().getWidth(), height = Game.getCurrent().getHeight();
 
 		Matrix4f projection = new Matrix4f().ortho2D(0, width * getZoom(), 0, height * getZoom());
+
+		updateProjectionMatrix(program, projection);
+	}
+	
+	/**
+	 * Temporarily moves the camera
+	 * @param pos Vector2f Position to move to
+	 * @param offset Vector2f Offset
+	 */
+	public void tempSetCenter(Vector2f pos, Vector2f offset) {
+		int width = Game.getCurrent().getWidth(), height = Game.getCurrent().getHeight();
+
+		Matrix4f projection = new Matrix4f().ortho2D(0, width * getZoom(), 0, height * getZoom());
+		Vector3f center = new Vector3f(-pos.x + (width * getZoom()) / 2 + offset.x, -pos.y + (height * getZoom()) / 2 + offset.y, 0);
+		projection.translate(center);
 
 		updateProjectionMatrix(program, projection);
 	}

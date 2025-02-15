@@ -43,12 +43,14 @@ import static org.lwjgl.opengl.GL13.GL_CLAMP_TO_BORDER;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,6 +59,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.imageio.ImageIO;
 
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
@@ -86,7 +89,7 @@ public class Texture {
 	 * The texture data
 	 */
 	private ByteBuffer image;
-	
+
 	/**
 	 * Where the texture came from
 	 */
@@ -113,7 +116,8 @@ public class Texture {
 
 	/**
 	 * Sets specified texture parameter
-	 * @param name int Parameter id 
+	 * 
+	 * @param name  int Parameter id
 	 * @param value int Value
 	 */
 	public void setParameter(int name, int value) {
@@ -121,11 +125,11 @@ public class Texture {
 	}
 
 	/**
-	 * Uploads texture data
-	 * Uses RGBA8 
-	 * @param width int Texture width
+	 * Uploads texture data Uses RGBA8
+	 * 
+	 * @param width  int Texture width
 	 * @param height int Texture height
-	 * @param data ByteBuffer Texture data
+	 * @param data   ByteBuffer Texture data
 	 */
 	public void uploadData(int width, int height, ByteBuffer data) {
 		uploadData(GL_RGBA8, width, height, GL_RGBA, data);
@@ -133,11 +137,12 @@ public class Texture {
 
 	/**
 	 * Uploads texture data
+	 * 
 	 * @param internalFormat int Internal texture format
-	 * @param width int Texture width
-	 * @param height int Texture height
-	 * @param format int Texture format
-	 * @param data ByteBuffer Texture data
+	 * @param width          int Texture width
+	 * @param height         int Texture height
+	 * @param format         int Texture format
+	 * @param data           ByteBuffer Texture data
 	 */
 	public void uploadData(int internalFormat, int width, int height, int format, ByteBuffer data) {
 		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
@@ -148,15 +153,61 @@ public class Texture {
 	 */
 	public void delete() {
 		if (exists) {
-			System.out.println("Attempting to delete textures at ID: "+getId()); 
+			System.out.println("Attempting to delete textures at ID: " + getId());
 			glDeleteTextures(getId());
-			System.out.println("Textures at ID:"+getId()+" deleted.");  
+			System.out.println("Textures at ID:" + getId() + " deleted.");
 			exists = false;
 		}
 	}
 
+	public void write(File target) throws IOException {
+		bind();
+	    
+	    // Ensure we're working with the correct size buffer
+	    int bufferSize = width * height * 4;
+	    ByteBuffer buffer = BufferUtils.createByteBuffer(bufferSize);
+	    
+	    // Read the texture data with proper alignment
+	    GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);  // Ensure 1-byte alignment
+	    GL11.glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+	    
+	    // Unbind texture
+	    glBindTexture(GL_TEXTURE_2D, 0);
+	    
+	    // Create an image with the correct color model
+	    BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+	    
+	    // Rewind the buffer to read from the start
+	    buffer.rewind();
+	    
+	    // Read pixel data with correct byte ordering
+	    int[] pixels = new int[width * height];
+	    for (int y = 0; y < height; y++) {
+	        for (int x = 0; x < width; x++) {
+	            // Calculate buffer position for vertically flipped coordinates
+	            int bufferPos = ((height - 1 - y) * width + x) * 4;
+	            
+	            // Get RGBA values
+	            int r = buffer.get(bufferPos) & 0xFF;
+	            int g = buffer.get(bufferPos + 1) & 0xFF;
+	            int b = buffer.get(bufferPos + 2) & 0xFF;
+	            int a = buffer.get(bufferPos + 3) & 0xFF;
+	            
+	            // Store in pixel array with correct orientation
+	            pixels[y * width + x] = (a << 24) | (r << 16) | (g << 8) | b;
+	        }
+	    }
+	    
+	    // Set the pixel data directly
+	    image.setRGB(0, 0, width, height, pixels, 0, width);
+	    
+	    // Write using PNG format to preserve transparency
+	    ImageIO.write(image, "png", target);
+	}
+
 	/**
 	 * Returns the texture's width
+	 * 
 	 * @return int Texture width
 	 */
 	public int getWidth() {
@@ -165,6 +216,7 @@ public class Texture {
 
 	/**
 	 * Returns the texture's height
+	 * 
 	 * @return int Texture height
 	 */
 	public int getHeight() {
@@ -173,6 +225,7 @@ public class Texture {
 
 	/**
 	 * Changes the texture's width
+	 * 
 	 * @param width int Width to use
 	 */
 	public void setWidth(int width) {
@@ -183,6 +236,7 @@ public class Texture {
 
 	/**
 	 * Changes the texture's height
+	 * 
 	 * @param height int Height to use
 	 */
 	public void setHeight(int height) {
@@ -193,9 +247,10 @@ public class Texture {
 
 	/**
 	 * Creates a texture using a supplied byte buffer
-	 * @param width int Texture width
-	 * @param height int Texture height
-	 * @param data ByteBuffer Texture data
+	 * 
+	 * @param width    int Texture width
+	 * @param height   int Texture height
+	 * @param data     ByteBuffer Texture data
 	 * @param location String Texture origin; can be null
 	 * @return Texture
 	 */
@@ -214,7 +269,7 @@ public class Texture {
 
 		t.image = data;
 		if (location == null || location.isBlank())
-			t.location = "**internal**:"+t.hashCode();
+			t.location = "**internal**:" + t.hashCode();
 		else
 			t.location = location;
 		if (!textureLocations.containsKey(t.location)) {
@@ -223,12 +278,13 @@ public class Texture {
 
 		return t;
 	}
-	
+
 	/**
 	 * Creates a texture using a supplied byte buffer
-	 * @param width int Texture width
+	 * 
+	 * @param width  int Texture width
 	 * @param height int Texture height
-	 * @param data ByteBuffer Texture data
+	 * @param data   ByteBuffer Texture data
 	 * @return Texture
 	 */
 	public static Texture createTexture(int width, int height, ByteBuffer data) {
@@ -245,7 +301,7 @@ public class Texture {
 		t.uploadData(GL_RGBA8, width, height, GL_RGBA, data);
 
 		t.image = data;
-		t.location = "**internal**:"+(t.hashCode());
+		t.location = "**internal**:" + (t.hashCode());
 		if (!textureLocations.containsKey(t.location)) {
 			textureLocations.put(t.location, t);
 		}
@@ -255,13 +311,14 @@ public class Texture {
 
 	/**
 	 * Creates a texture of a single color
-	 * @param width int Texture width
+	 * 
+	 * @param width  int Texture width
 	 * @param height int Texture height
-	 * @param c Color To use
+	 * @param c      Color To use
 	 * @return Texture
 	 */
 	public static Texture createColoredTexture(int width, int height, Color c) {
-		String locationString = "**internal**:"+c.hashCode();
+		String locationString = "**internal**:" + c.hashCode();
 		ByteBuffer image = null;
 		if (textureLocations.containsKey(locationString)) {
 			Texture t = textureLocations.get(locationString);
@@ -271,7 +328,7 @@ public class Texture {
 
 			image = BufferUtils.createByteBuffer(width * height * 4);
 
-			for (int y = height-1; y >= 0; y--) {
+			for (int y = height - 1; y >= 0; y--) {
 				for (int x = 0; x < width; x++) {
 					image.put((byte) (c.getRed() & 0xFF));
 					image.put((byte) (c.getGreen() & 0xFF));
@@ -288,25 +345,25 @@ public class Texture {
 
 	/**
 	 * 
-	 * @param bi BufferedImage To convert
+	 * @param bi   BufferedImage To convert
 	 * @param path String Original path
 	 * @return Texture
 	 */
 	private static Texture loadTexture(BufferedImage bi, String path) {
 		ByteBuffer image = null;
-		
+
 		if (textureLocations.containsKey(path)) {
 			Texture t = textureLocations.get(path);
 			return t;
 		}
-		
+
 		try (MemoryStack stack = MemoryStack.stackPush()) {
 			int pixels[] = new int[bi.getWidth() * bi.getHeight()];
 			bi.getRGB(0, 0, bi.getWidth(), bi.getHeight(), pixels, 0, bi.getWidth());
 
 			image = BufferUtils.createByteBuffer(bi.getWidth() * bi.getHeight() * 4);
 
-			for (int y = bi.getHeight()-1; y >= 0; y--) {
+			for (int y = bi.getHeight() - 1; y >= 0; y--) {
 				for (int x = 0; x < bi.getWidth(); x++) {
 					int pixel = pixels[y * bi.getWidth() + x];
 					image.put((byte) ((pixel >> 16) & 0xFF));
@@ -319,12 +376,13 @@ public class Texture {
 			image.flip();
 		}
 		Texture t = createTexture(bi.getWidth(), bi.getHeight(), image, path);
-		
+
 		return t;
 	}
 
 	/**
 	 * Loads a texture from an internal path
+	 * 
 	 * @param path String Path to check
 	 * @return Texture
 	 */
@@ -339,9 +397,10 @@ public class Texture {
 		}
 		return t;
 	}
-	
+
 	/**
 	 * Loads a texture from an external path
+	 * 
 	 * @param path String Path to check
 	 * @return Texture
 	 */
@@ -355,7 +414,6 @@ public class Texture {
 			e.printStackTrace();
 		}
 
-
 		return t;
 
 	}
@@ -366,14 +424,15 @@ public class Texture {
 	public static void purgeTextures() {
 		for (Entry<String, Texture> e : textureLocations.entrySet()) {
 			Texture t = e.getValue();
-			
+
 			textureLocations.remove(e.getKey());
 			t.delete();
 		}
 	}
-	
+
 	/**
 	 * Gets the origin of the texture
+	 * 
 	 * @return String The origin
 	 */
 	public String getOriginLocation() {
@@ -382,6 +441,7 @@ public class Texture {
 
 	/**
 	 * Gets the texture's buffer
+	 * 
 	 * @return ByteBuffer The buffer
 	 */
 	public ByteBuffer getBuffer() {
@@ -390,6 +450,7 @@ public class Texture {
 
 	/**
 	 * Gets the texture's id
+	 * 
 	 * @return int The texture's id
 	 */
 	public int getId() {

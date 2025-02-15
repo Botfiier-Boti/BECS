@@ -16,7 +16,7 @@ public class WorldListener extends EventListener {
 	public void onComponentAdded(EntityComponentAddedEvent<Shape> e) {
 		Entity en = e.getTarget();
 		
-		if (en.hasComponent("Position")) {
+		if (en.hasComponent("Position") && !Entity.spatialMap().contains(en)) {
 			EntityComponent<Shape> s = e.getComponent();
 			EntityComponent<Vector2f> pC = en.getComponent("Position");
 			Vector2f p = pC.get();
@@ -26,6 +26,41 @@ public class WorldListener extends EventListener {
 			e.getComponent().set(sh);
 
 			Entity.spatialMap().addEntity(en);
+		}
+	}
+	
+	@EventHandler(event = EntityComponentAddedEvent.class, origin = "Position")
+	public void onPositionAdded(EntityComponentAddedEvent<Vector2f> e) {
+		Entity en = e.getTarget();
+		
+		if (en.hasComponent("CollisionShape") && !Entity.spatialMap().contains(en)) {
+			EntityComponent<Shape> s = en.getComponent("CollisionShape");
+			EntityComponent<Vector2f> pC = e.getComponent();
+			Vector2f p = pC.get();
+
+			Shape sh = s.get();
+			sh.setCenter(p.x, p.y);
+			s.set(sh);
+
+			Entity.spatialMap().addEntity(en);
+		}
+	}
+	
+	@EventHandler(event = EntityComponentRemovedEvent.class, origin = "Position")
+	public void onPositionRemoved(EntityComponentRemovedEvent<Vector2f> e) {
+		Entity en = e.getTarget();
+		
+		if (Entity.spatialMap().contains(en)) {
+			Entity.spatialMap().removeEntity(en);
+		}
+	}
+	
+	@EventHandler(event = EntityComponentRemovedEvent.class, origin = "CollisionShape")
+	public void onShapeRemoved(EntityComponentRemovedEvent<Shape> e) {
+		Entity en = e.getTarget();
+		
+		if (Entity.spatialMap().contains(en)) {
+			Entity.spatialMap().removeEntity(en);
 		}
 	}
 	
