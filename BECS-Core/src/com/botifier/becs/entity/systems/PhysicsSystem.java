@@ -2,6 +2,7 @@ package com.botifier.becs.entity.systems;
 
 import static com.botifier.becs.entity.EntityComponentManager.hasComponent;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,7 +18,7 @@ import org.joml.Vector2fc;
 import org.lwjgl.glfw.GLFW;
 
 import com.botifier.becs.Game;
-import com.botifier.becs.config.PhysicsConfig;
+import com.botifier.becs.config.ObjectConfig;
 import com.botifier.becs.entity.Entity;
 import com.botifier.becs.entity.EntityComponent;
 import com.botifier.becs.entity.EntitySystem;
@@ -93,7 +94,7 @@ public class PhysicsSystem extends EntitySystem {
 
 	@Override
 	public void apply(Entity[] entities) {
-		if ((PhysicsConfig.getBoolean(STAGGER_MODE_CONFIG) && !Game.getCurrent().getInput().isKeyPressed(GLFW.GLFW_KEY_SPACE)) || isPaused()) {
+		if ((getConfig().getBoolean(STAGGER_MODE_CONFIG) && !Game.getCurrent().getInput().isKeyPressed(GLFW.GLFW_KEY_SPACE)) || isPaused()) {
 			return;
 		}
 		
@@ -492,7 +493,7 @@ public class PhysicsSystem extends EntitySystem {
 
 		//So entities slide into place instead of abruptly stopping
 		if (v.length() > 0) {
-			velComponent.set(Math2.round(v.mul(PhysicsConfig.getFloat(SMOOTHING_FACTOR_CONFIG)), 2));
+			velComponent.set(Math2.round(v.mul(getConfig().getFloat(SMOOTHING_FACTOR_CONFIG)), 2));
 		}
 	}
 
@@ -508,14 +509,22 @@ public class PhysicsSystem extends EntitySystem {
 	 * Initializes the Physics config
 	 */
 	public void initPhysicsConfig() {
-		PhysicsConfig.putIfAbsent(GRAVITY_CONFIG, false);
-		PhysicsConfig.putIfAbsent(GRAVITY_LEVEL_CONFIG, 0.98f);
-		PhysicsConfig.putIfAbsent(PRECISE_MODE_CONFIG, true);
-		PhysicsConfig.putIfAbsent(STAGGER_MODE_CONFIG, false);
-		PhysicsConfig.putIfAbsent(SMOOTHING_FACTOR_CONFIG, 0.75f);
-		System.out.println(PhysicsConfig.listValues());
+		
+		ObjectConfig conf = ObjectConfig.loadOrCreateFromFile("physics-config.json");
+		getGame().addConfig("PhysicsConfig", conf);
+		
+		getConfig().putIfAbsent(GRAVITY_CONFIG, false);
+		getConfig().putIfAbsent(GRAVITY_LEVEL_CONFIG, 0.98f);
+		getConfig().putIfAbsent(PRECISE_MODE_CONFIG, true);
+		getConfig().putIfAbsent(STAGGER_MODE_CONFIG, false);
+		getConfig().putIfAbsent(SMOOTHING_FACTOR_CONFIG, 0.75f);
+		System.out.println(getConfig());
 	}
 
+	public ObjectConfig getConfig() {
+		return getGame().<ObjectConfig>getConfig("PhysicsConfig");
+	}
+	
 	/**
 	 * Returns the current physics tick
 	 * Good for cooldowns
@@ -535,6 +544,7 @@ public class PhysicsSystem extends EntitySystem {
 
 	@Override
 	public void destroy() {
+		getConfig().writeFile("physics-config.json");
 		running.set(false);
 	}
 }

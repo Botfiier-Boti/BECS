@@ -71,7 +71,7 @@ public class HelloWorld extends Game{
 	Camera camera;
 
 	public HelloWorld() {
-		super("Hello World", 800, 800, true, true, false);
+		super("Hello World", 800, 800, false, true, true);
 	}
 
 	@Override
