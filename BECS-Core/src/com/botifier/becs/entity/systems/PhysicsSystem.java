@@ -8,6 +8,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -26,7 +28,9 @@ import com.botifier.becs.entity.systems.physics.PhysicsSystemExtension;
 import com.botifier.becs.util.CollisionUtil;
 import com.botifier.becs.util.Math2;
 import com.botifier.becs.util.ParameterizedRunnable;
+import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.SpatialPolygonHolder;
+import com.botifier.becs.util.debugging.ExecutionTimer;
 import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 import com.botifier.becs.util.shapes.Shape;
@@ -40,7 +44,7 @@ import com.botifier.becs.util.shapes.Shape;
  * @author Botifier
  */
 public class PhysicsSystem extends EntitySystem {
-
+    
 	/**
 	 * Config name of gravity
 	 */
@@ -83,6 +87,7 @@ public class PhysicsSystem extends EntitySystem {
      */
     private AtomicLong physicsTick = new AtomicLong(0);
 
+
     /**
      * Physics System constructor
      */
@@ -91,7 +96,7 @@ public class PhysicsSystem extends EntitySystem {
 		//Initializes the physics config
 		initPhysicsConfig();
 	}
-
+	
 	@Override
 	public void apply(Entity[] entities) {
 		if ((getConfig().getBoolean(STAGGER_MODE_CONFIG) && !Game.getCurrent().getInput().isKeyPressed(GLFW.GLFW_KEY_SPACE)) || isPaused()) {
@@ -100,17 +105,20 @@ public class PhysicsSystem extends EntitySystem {
 		
 		if (!running.get())
 			return;
-		
+
+	    final SpatialEntityMap sem = Entity.spatialMap();
+	    
 		//Create a list for tracking all of the entities that have moved
 		List<Entity> movedList = new CopyOnWriteArrayList<>();
 		
 		//Convert all awake entities to futures that run updateEntity
-		Stream<Entity> es = Entity.spatialMap().getAwake().stream().map(e -> Entity.getEntity(e));
+		Stream<Entity> es = sem.getAwake().stream().parallel().map(e -> Entity.getEntity(e));
+		
 		List<CompletableFuture<Void>> futures = es
-				.parallel()
 				.map(i -> CompletableFuture.runAsync(() -> {
-					if (running.get())
+					if (running.get()) {
 						updateEntity(i, movedList);
+					}
 				}))
 				.collect(Collectors.toList());
 		//Collect all futures together
@@ -125,7 +133,7 @@ public class PhysicsSystem extends EntitySystem {
 		allOf.join();
 
 		//Proceed to the next physics tick
-		physicsTick.getAndIncrement();
+		physicsTick.incrementAndGet();
 	}
 
 	/**
@@ -160,6 +168,7 @@ public class PhysicsSystem extends EntitySystem {
 			Polygon collideCheck = check.mergeNoRepeat(check.move(new Vector2f(v.x, v.y)));
 			
 			//Obtain all nearby entities
+
 			Entity[] entities = Entity.spatialMap().getEntitiesIn(collideCheck, true).toArray(Entity[]::new);
 			
 			//If there is at least 1 entity perform collision handling and then update velocity
@@ -255,7 +264,7 @@ public class PhysicsSystem extends EntitySystem {
 		Polygon move = s.toPolygon();
 
 		//Filter out all invalid targets from the entities array
-		entities = Arrays.stream(entities).filter(e2 -> validCollisionEntity(e, e2)).toArray(Entity[]::new);
+		entities = Arrays.stream(entities).parallel().filter(e2 -> validCollisionEntity(e, e2)).toArray(Entity[]::new);
 		
 		//Sort the entities array by distance from the entity
 		Arrays.sort(entities, (a, b) -> {
@@ -449,7 +458,7 @@ public class PhysicsSystem extends EntitySystem {
 		EntityComponent<Vector2f> posComponent = e.getComponent("Position");
 		EntityComponent<Vector2f> velComponent = e.getComponent("Velocity");
 
-		//Obtains the values of the positon and velocity components
+		//Obtains the values of the position and velocity components
 		Vector2fc cP = posComponent.get();
 		Vector2fc cV = velComponent.get();
 
@@ -474,7 +483,7 @@ public class PhysicsSystem extends EntitySystem {
 		}
 		//Normal movement
 		posComponent.set(p.add(v));
-
+		
 		//Tracks the boolean facing direction of the entity
 		if (hasComponent(e, "BooleanDirection")) {
 			EntityComponent<Boolean> boolComponent = e.getComponent("BooleanDirection");

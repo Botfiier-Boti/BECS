@@ -47,7 +47,7 @@ public class ExecutionTimer implements AutoCloseable {
 		this.end = Instant.now();
 		Duration dur = Duration.between(start, end);
 
-		output.printf("%s Time taken: %.3f ms (%d ns)%n", name, dur.toMillis(), dur.toNanos());
+		output.printf("%s Time taken: %d ms (%d ns)%n", name, dur.toMillis(), dur.toNanos());
 	}
 	
 	public long getElapsedTimeMs() {

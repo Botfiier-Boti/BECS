@@ -2,6 +2,7 @@ package com.botifier.becs.entity;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -33,7 +34,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Spatial map of all entities
 	 */
-	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(256);
+	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(32);
 
 	/**
 	 * List of current components for easy access
@@ -267,8 +268,8 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @param name String Name of the component
 	 * @return boolean Whether or not the entity has the specified component
 	 */
-	public boolean hasComponent(String name) {
-		return components.containsKey(name.toLowerCase());
+	public boolean hasComponent(String... name) {
+		return Arrays.stream(name).parallel().anyMatch(s -> components.containsKey(s.toLowerCase()));
 	}
 
 	/**

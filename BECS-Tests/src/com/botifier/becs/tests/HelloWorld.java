@@ -71,7 +71,7 @@ public class HelloWorld extends Game{
 	Camera camera;
 
 	public HelloWorld() {
-		super("Hello World", 800, 800, false, true, true);
+		super("Hello World", 800, 800, false, true, false);
 	}
 
 	@Override
@@ -182,7 +182,7 @@ public class HelloWorld extends Game{
 			Entity.addEntity(wew);
 		}
 		
-		IntStream.range(0, 10000).parallel().forEach(i -> {
+		IntStream.range(0, 1).parallel().forEach(i -> {
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override
@@ -271,13 +271,6 @@ public class HelloWorld extends Game{
 		//rotRect3.setRotation(Math2.calcAngle(rotRect3.getCenter(), getInput().getMousePos()));
 		//rotRect4.setRotation(Math2.calcAngle(rotRect4.getCenter(), getInput().getMousePos()));
 		//Vector2f velocity = VelocityComponent.getVelocity(center);
-		EntityComponent<Shape> shapeComp = e.getComponent("CollisionShape");
-		Shape s = shapeComp.get();
-		float x1 = s.getCenter().x - s.getDimensions().x/2;
-		float y1 = s.getCenter().y - s.getDimensions().y/2;
-
-		float x2 = s.getCenter().x + s.getDimensions().x/2;
-		float y2 = s.getCenter().y + s.getDimensions().y/2;
 
 		//float x3 = s.getCenter().x + s.getDimensions().x/2 + velocity.x;
 		//float y3 = s.getCenter().y + s.getDimensions().y/2 + velocity.y;
@@ -300,7 +293,8 @@ public class HelloWorld extends Game{
 	public void draw(Renderer r, WorldState state, RotatableRectangle camera, float alpha) {
 		this.camera.draw(r);
 		
-		/*if (center != null) {
+		/*
+		if (center != null) {
 			if (center.hasComponent("Position")) {
 				EntityComponent<Vector2f> posComp = center.getComponent("Position");
 				Vector2f v = posComp.get();
@@ -331,11 +325,13 @@ public class HelloWorld extends Game{
 			r.getAutoBatcher().add(Image.WHITE_PIXEL, rr, Color.yellow, -2);
 		});*/
 		//r.end();
-		/*draw.stream().forEach(e -> {
+		
+		/*
+		draw.stream().forEach(e -> {
 						  		e.setAutoBatch(true);
 						  		e.draw(r);
 						  });*/
-
+		
 		//renderDebugCollisions(r, sem);
 		/*
 		sem.getGrid().keySet().parallelStream().forEach(k -> {
@@ -348,7 +344,6 @@ public class HelloWorld extends Game{
 				auto.add(Image.WHITE_PIXEL, rr, Color.blue, -1);
 			}
 		});*/
-		auto.draw(r);
 
 	}
 

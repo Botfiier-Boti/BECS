@@ -66,12 +66,8 @@ public abstract class EntitySystem {
 		Set<Entity> hold = new HashSet<>();
 		
 		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
-		hold = entities.parallelStream().filter(e -> {
-			for (String component : requiredComponents) {
-				if (!e.hasComponent(component))
-					return false;
-			}
-			return true;
+		hold = entities.stream().parallel().filter(e -> {
+			return e.hasComponent(requiredComponents);
 		}).collect(Collectors.toSet());
 		return hold;
 

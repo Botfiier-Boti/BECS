@@ -1,7 +1,11 @@
 	package com.botifier.becs.entity.systems;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -26,6 +30,8 @@ import com.botifier.becs.util.Math2;
  */
 public class ArrowKeyControlsSystem extends EntitySystem {
 
+	public AtomicLong keyTick = new AtomicLong(0);
+	
     /**
      * ArrowKeyControlsSystem constructor
      * Automatically adds WASD, Arrow keys and Space bar to ControlsConfig
@@ -49,9 +55,9 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		//Gets the Input
 		Input in = Game.getCurrent().getInput();
 
+		
 		//Creates futures for all entities in entities 
 		List<CompletableFuture<Void>> futures = IntStream.range(0, entities.length)
-				.parallel()
 				.mapToObj(i -> CompletableFuture.runAsync(() -> update(entities[i], in)))
 				.collect(Collectors.toList());
 
@@ -60,6 +66,8 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		
 		//Waits for the futures to complete
 		allOf.join();
+		
+		keyTick.incrementAndGet();
 	}
 
 	/**
@@ -75,8 +83,9 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		EntityComponent<Vector2f> positionComponent = e.getComponent("Position");
 		EntityComponent<Vector2f> velocityComponent = e.getComponent("Velocity");
 
+		Vector2f p = new Vector2f(positionComponent.get());
 		//Gets the velocity of the entity
-		Vector2f v = velocityComponent.get();
+		Vector2f v = new Vector2f(velocityComponent.get());
 		Vector2f toAdd = new Vector2f();
 
 
@@ -99,7 +108,7 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 
 		if (toAdd.x != 0 || toAdd.y != 0) {
 			//Calculates the angle at which the entity will move
-			float angle = Math2.calcAngle(positionComponent.get(), new Vector2f(toAdd).add(positionComponent.get()));
+			float angle = Math2.calcAngle(p, new Vector2f(toAdd).add(p));
 
 			//Normalizes the movement
 			toAdd.set(Math.cos(angle), Math.sin(angle));
@@ -112,7 +121,7 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		}
 		//If toAdd has any movement update the velocity
 		if (toAdd.length() > 0) {
-			velocityComponent.set(new Vector2f(v).add(toAdd));
+			velocityComponent.set(v.add(toAdd));
 			//Entity.spatialMap().wakeEntity(e);
 		}
 		

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -65,6 +66,7 @@ import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.sound.SoundListener;
 import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
+import com.botifier.becs.util.debugging.ExecutionTimer;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 import com.botifier.becs.util.events.*;
 import com.botifier.becs.events.KeyCharacterActionEvent;
@@ -469,27 +471,22 @@ public abstract class Game {
 		ScheduledFuture<?> update = schedular.scheduleAtFixedRate(new UpdateRunnable(), 0, 1000 / targetUPS,
 				TimeUnit.MILLISECONDS);
 
-		ScheduledExecutorService renderExecutor = Executors.newScheduledThreadPool(1, new HighPriorityThreadFactory());
-		ScheduledFuture<?> render = renderExecutor.scheduleWithFixedDelay(new RenderRunnable(), 0, 10,
-				TimeUnit.NANOSECONDS);
+		RenderRunnable rr = new RenderRunnable();
+		Thread t = new Thread(() -> {
+			while (running.get())
+				rr.run();
+		}, "Render Thread");
+		
+		t.setDaemon(true);
+		t.setPriority(Thread.MAX_PRIORITY);
+		t.start();
 
-		ThreadMXBean bean = ManagementFactory.getThreadMXBean();
 		while (running.get()) {
-			GLFW.glfwWaitEventsTimeout(1);
-			long[] threadIds = bean.findDeadlockedThreads(); // Returns null if no threads are deadlocked.
-
-			if (threadIds != null) {
-				ThreadInfo[] infos = bean.getThreadInfo(threadIds);
-
-				for (ThreadInfo info : infos) {
-					StackTraceElement[] stack = info.getStackTrace();
-					System.err.print(Arrays.toString(stack));
-				}
-			}
+			GLFW.glfwWaitEvents();
+			Thread.yield();
 		}
+		
 		update.cancel(true);
-		render.cancel(true);
-		renderExecutor.shutdownNow();
 		schedular.shutdownNow();
 	}
 
@@ -970,31 +967,34 @@ public abstract class Game {
 			if (!running.get()) {
 				return;
 			}
+			final ReentrantLock lock = l;
+			
 			Thread.currentThread().setName("Update Thread");
 			t.update(); // Update the timer
 			delta.set(t.getDelta()); // set delta
+			accumulator += delta.get();
 			try {
 				if (!noLock) {
-					l.lock(); // Obtains a lock if locking is enabled
+					lock.lock(); // Obtains a lock if locking is enabled
 					tick();
-					l.unlock(); // Unlocks if locking is enabled
+					lock.unlock(); // Unlocks if locking is enabled
 				} else
 					tick();
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
-				ticksAlive.incrementAndGet(); // Add to the tick tracker
+				ticksAlive.incrementAndGet(); // Add to the tick tracker	
 			}
 		}
 		
 		private void tick() {
 			update(); // Performs an update
-			t.updateUPS(); // Updates UPS counter (Updates Per Second)
-			systems.stream().parallel().forEach(system -> { // Runs all systems in parallel
+			
+			systems.stream().forEach(system -> { // Runs all systems
 				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); // Obtains all valid entities
-																						// for a system
 				system.apply(entities); // Applies the system to all of those entities
 			});
+			t.updateUPS(); // Updates UPS counter (Updates Per Second)
 		}
 	}
 
@@ -1008,16 +1008,18 @@ public abstract class Game {
 			if (!running.get()) {
 				return;
 			}
-			Thread.currentThread().setName("Render Thread");
+			final ReentrantLock lock = l;
 			glfwMakeContextCurrent(window.getId()); // Obtains context
 			GL.setCapabilities(window.getGLCapabilities()); // Obtains the current window's GL Capabilities
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
 
 			try {
-				if (!noLock) {
-					l.lock(); // Locks if locking is enabled
-					render();
-					l.unlock();
+				if (!noLock && lock.tryLock(5, TimeUnit.MILLISECONDS)) {
+					try {
+						render();
+					} finally {
+						lock.unlock();
+					}
 				} else {
 					render();
 				}
@@ -1032,6 +1034,7 @@ public abstract class Game {
 													// Draws happened on this frame
 				t.updateFPS(); // Updates the FPS counter
 			}
+			Thread.yield();
 		}
 
 		private void render() {

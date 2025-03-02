@@ -219,7 +219,7 @@ public class Input {
 		if (keyLock != null && check != null && (check.length < 1 || !check[0].equals(keyLock)))
 			return false;
 		if (!keys.containsKey(keyCode)) {
-			keyAction(keyCode, glfwGetKey(window, keyCode));
+			return false;
 		}
 		int state = keys.get(keyCode);
 		if (state == GLFW_PRESS || state == GLFW_REPEAT) {
@@ -238,7 +238,7 @@ public class Input {
 		if (keyLock != null && check != null && (check.length < 1 || !check[0].equals(keyLock)))
 			return false;
 		if (!keys.containsKey(keyCode)) {
-			keyAction(keyCode, glfwGetKey(window, keyCode));
+			return false;
 		}
 		int state = keys.get(keyCode);
 		if (state == GLFW_PRESS) {
@@ -258,7 +258,7 @@ public class Input {
 		if (keyLock != null && check != null && (check.length < 1 || !check[0].equals(keyLock)))
 			return false;
 		if (!keys.containsKey(keyCode)) {
-			keyAction(keyCode, glfwGetKey(window, keyCode));
+			return false;
 		}
 		int state = keys.get(keyCode);
 		if (state == GLFW_RELEASE) {
