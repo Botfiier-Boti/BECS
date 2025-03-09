@@ -1,6 +1,8 @@
 package com.botifier.becs.util.debugging;
 
 import java.io.PrintStream;
+import java.time.Duration;
+import java.time.Instant;
 
 
 /**
@@ -12,12 +14,11 @@ public class ExecutionTimer implements AutoCloseable {
 
 	public final static String DEFAULT_NAME = "Timer";
 
-	private final long start;
-	private final long startNs;
+	private final Instant start;
 	private final PrintStream output;
 	private final String name;
-	private long end;
-	private long endNs;
+	private Instant end;
+	private boolean closed = false;
 
 	public ExecutionTimer() {
 		this(DEFAULT_NAME, System.out);
@@ -34,32 +35,35 @@ public class ExecutionTimer implements AutoCloseable {
 	public ExecutionTimer(String name, PrintStream output) {
 		this.name = name;
 		this.output = output;
-		startNs = System.nanoTime();
-		start = System.currentTimeMillis();
+		start = Instant.now();
 	}
 
 	@Override
 	public void close() {
-		endNs = System.nanoTime() - startNs;
-		end = System.currentTimeMillis() - start;
+		if (closed) 
+			return;
+		closed = true;
+		
+		this.end = Instant.now();
+		Duration dur = Duration.between(start, end);
 
-		output.println(name+" Time taken: "+(endNs / 1000000.0)+"ms");
+		output.printf("%s Time taken: %d ms (%d ns)%n", name, dur.toMillis(), dur.toNanos());
 	}
+	
+	public long getElapsedTimeMs() {
+        return closed ? Duration.between(start, end).toMillis() : -1;
+    }
 
-	public long getEndTimeNs() {
-		return endNs;
-	}
+    public long getElapsedTimeNs() {
+        return closed ? Duration.between(start, end).toNanos() : -1;
+    }
 
-	public long getEndTime() {
+	public Instant getEndTime() {
 		return end;
 	}
 
-	public long getStartTime() {
+	public Instant getStartTime() {
 		return start;
-	}
-
-	public long getStartTimeNs() {
-		return startNs;
 	}
 
 }

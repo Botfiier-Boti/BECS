@@ -107,7 +107,7 @@ public class CollisionTest extends Game {
 		}
 
 		Circle ci = new Circle(200, 200, 100);
-		Polygon p = ci.toPolygon();
+		//Polygon p = ci.toPolygon();
 		//rr.draw(r, Color.yellow);
 		Vector2f h = new Vector2f(v).normalize();
 		hold = hold.move(h);

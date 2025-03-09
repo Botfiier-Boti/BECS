@@ -50,7 +50,7 @@ public class Window {
 	/**
 	 * Thread pool
 	 */
-	final ExecutorService threadExecutors = Executors.newCachedThreadPool();
+	final ExecutorService threadExecutors = Executors.newFixedThreadPool(4);
 	/**
 	 * The GLCapabilities of this window
 	 */

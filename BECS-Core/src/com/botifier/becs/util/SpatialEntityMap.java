@@ -129,7 +129,10 @@ public class SpatialEntityMap {
 	 */
 	public boolean addEntity(Entity e) {
 		int state = 0;
-		if (e == null || contains(e)) {
+		if (e == null) {
+			return false;
+		}
+		if (contains(e)) {
 			state = removeEntity(e);
 		}
 		EntityComponent<Shape> s = e.getComponent("CollisionShape");
@@ -186,9 +189,11 @@ public class SpatialEntityMap {
 	}
 	
 	public boolean sleepEntity(Entity e) {
-		if (!entityLocations.containsKey(e.getUUID())) {
+		if (e == null)
 			return false;
-		}
+		if (!isAwake(e.getUUID()))
+			return false;
+			
 		SpatialPolygonHolder sph = locateActive(e);
 		if (sph == null)
 			return false;
@@ -199,9 +204,11 @@ public class SpatialEntityMap {
 	}
 
 	public boolean wakeEntity(Entity e) {
-		if (!sleepingEntities.containsKey(e.getUUID())) {
+		if (e == null)
 			return false;
-		}
+		if (isAwake(e.getUUID()))
+			return false;
+		
 		SpatialPolygonHolder sph = locateSleeping(e);
 		if (sph == null)
 			return false;
@@ -375,11 +382,15 @@ public class SpatialEntityMap {
 	}
 	
 	public boolean isSleeping(Entity e) {
-		return sleepingEntities.containsKey(e.getUUID());
+		if (e == null)
+			return false;
+		return isSleeping(e.getUUID());
 	}
 	
 	public boolean isAwake(Entity e) {
-		return entityLocations.containsKey(e.getUUID());
+		if (e == null)
+			return false;
+		return isAwake(e.getUUID());
 	}
 	
 	

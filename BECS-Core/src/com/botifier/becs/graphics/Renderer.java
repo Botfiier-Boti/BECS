@@ -63,7 +63,7 @@ public class Renderer {
 	 * Size of each buffer
 	 * Divisible by the size of each vertex for maximum efficiency.
 	 */
-	public static final int BUFFER_SIZE = 2400000;// 19200;//30720;
+	public static final int BUFFER_SIZE = 19200;//2400000;//30720;
 
 	/**
 	 * Amount of batches the game can create
@@ -613,12 +613,14 @@ public class Renderer {
 		Texture.purgeTextures();
 		
 		System.out.println("Removing Batches...");
-		for (int i = batches.size() - 1; i >= 0; i--) {
-			SpriteBatch batch = batches.get(i);
-			if (batches == null) {
-				continue;
+		if (batches != null) {
+			for (int i = batches.size() - 1; i >= 0; i--) {
+				SpriteBatch batch = batches.get(i);
+				if (batches == null) {
+					continue;
+				}
+				batch.destroy();
 			}
-			batch.destroy();
 		}
 
 		System.out.println("Clearing Vertices...");
@@ -1039,6 +1041,8 @@ public class Renderer {
 	 * @return SpriteBatch that is open
 	 */
 	public SpriteBatch getFirstOpenBatch(int vert) {
+		if (vertices == null)
+			return null;
 		SpriteBatch use = null;
 
 		Optional<SpriteBatch> lookup = batches.stream().filter(Objects::nonNull).filter(batch -> {

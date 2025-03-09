@@ -21,7 +21,7 @@ public class TestPlayer extends Entity {
 	}
 	
 	@Override
-	public void init() {
+	public Entity init() {
 		Image i = new Image("christmasfroggy.png");
 		i.setZ(1);
 		i.setScale(0.25f);
@@ -37,6 +37,7 @@ public class TestPlayer extends Entity {
 		addComponent("Collidable", true);
 		addComponent("Solid", true);
 		addComponent("ArrowKeyControlled", true);
+		return this;
 	}
 	
 	

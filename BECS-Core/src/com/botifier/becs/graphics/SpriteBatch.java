@@ -9,6 +9,9 @@ import java.nio.ByteBuffer;
 
 import org.joml.Math;
 import org.joml.Vector2f;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GL44;
 
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.Math2;
@@ -63,7 +66,7 @@ public class SpriteBatch {
 	/**
 	 * A reusable rectangle
 	 */
-	private RotatableRectangle reuseRectangle;
+	private RotatableRectangle reuseRectangle = null;
 
 	/**
 	 * SpriteBatch constructor
@@ -91,7 +94,7 @@ public class SpriteBatch {
 	public void begin() {
 		if (!drawing) {
 			//Maps the assigned portion of the render buffer to this
-			vertices = glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE,
+			vertices = glMapBuffer(GL_ARRAY_BUFFER, GL15.GL_WRITE_ONLY,
 					r.getVertices().capacity() / r.getNumBatches(),
 					r.getVertices());
 		    drawing = true;
@@ -730,7 +733,7 @@ public class SpriteBatch {
 	 */
 	private RotatableRectangle getReuseableRectangle(Vector2f center, float width, float height, float rotation) {
 		if (reuseRectangle == null) {
-			return new RotatableRectangle(center, width, height, rotation);
+			return reuseRectangle = new RotatableRectangle(center, width, height, rotation);
 		}
 		reuseRectangle.setWidth(width);
 		reuseRectangle.setHeight(height);

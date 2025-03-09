@@ -65,7 +65,7 @@ public class EntityComponent<T> implements Cloneable {
 	 * @return Information within the component of type T
 	 */
 	public T get() {
-		return information.getPlain();
+		return information.get();
 	}
 
 	/**
@@ -115,9 +115,15 @@ public class EntityComponent<T> implements Cloneable {
 	public Class<?> getDataType() {
 		return type;
 	}
+	@SuppressWarnings("unchecked")
 	@Override
 	public EntityComponent<T> clone() {
-		return new EntityComponent<T>(name, owner, information.get());
+		try {
+			return (EntityComponent<T>) super.clone();
+		} catch (CloneNotSupportedException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 

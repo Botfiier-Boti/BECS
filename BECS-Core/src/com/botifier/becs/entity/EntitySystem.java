@@ -30,6 +30,7 @@ public abstract class EntitySystem {
 	 */
 	public EntitySystem(Game g) {
 		requiredComponents = new String[0];
+		this.g = g;
 	}
 
 	/**
@@ -62,21 +63,11 @@ public abstract class EntitySystem {
 		if (requiredComponents == null || requiredComponents.length == 0) {
 			return Entity.getEntities();
 		}
+		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
 		Set<Entity> hold = new HashSet<>();
 		
-		if (requiredComponents.length == 0)
-			return hold;
-		
-		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
-		hold = entities.parallelStream().filter(e -> {
-			for (String component : requiredComponents) {
-				if (!e.hasComponent(component))
-					return false;
-			}
-			return true;
-		}).collect(Collectors.toSet());
+		entities.parallelStream().filter(e -> e.hasComponent(requiredComponents)).forEachOrdered(hold::add);;
 		return hold;
-
 	}
 
 	/**

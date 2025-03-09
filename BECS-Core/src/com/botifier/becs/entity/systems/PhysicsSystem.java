@@ -2,12 +2,17 @@ package com.botifier.becs.entity.systems;
 
 import static com.botifier.becs.entity.EntityComponentManager.hasComponent;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -16,7 +21,7 @@ import org.joml.Vector2fc;
 import org.lwjgl.glfw.GLFW;
 
 import com.botifier.becs.Game;
-import com.botifier.becs.config.PhysicsConfig;
+import com.botifier.becs.config.ObjectConfig;
 import com.botifier.becs.entity.Entity;
 import com.botifier.becs.entity.EntityComponent;
 import com.botifier.becs.entity.EntitySystem;
@@ -24,7 +29,9 @@ import com.botifier.becs.entity.systems.physics.PhysicsSystemExtension;
 import com.botifier.becs.util.CollisionUtil;
 import com.botifier.becs.util.Math2;
 import com.botifier.becs.util.ParameterizedRunnable;
+import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.SpatialPolygonHolder;
+import com.botifier.becs.util.debugging.ExecutionTimer;
 import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 import com.botifier.becs.util.shapes.Shape;
@@ -38,7 +45,7 @@ import com.botifier.becs.util.shapes.Shape;
  * @author Botifier
  */
 public class PhysicsSystem extends EntitySystem {
-
+    
 	/**
 	 * Config name of gravity
 	 */
@@ -79,7 +86,8 @@ public class PhysicsSystem extends EntitySystem {
      * The current physics tick
      * Great for timing
      */
-    private long physicsTick = 0;
+    private AtomicLong physicsTick = new AtomicLong(0);
+
 
     /**
      * Physics System constructor
@@ -89,26 +97,29 @@ public class PhysicsSystem extends EntitySystem {
 		//Initializes the physics config
 		initPhysicsConfig();
 	}
-
+	
 	@Override
 	public void apply(Entity[] entities) {
-		if ((PhysicsConfig.getBoolean(STAGGER_MODE_CONFIG) && !Game.getCurrent().getInput().isKeyPressed(GLFW.GLFW_KEY_SPACE)) || isPaused()) {
+		if ((getConfig().getBoolean(STAGGER_MODE_CONFIG) && !Game.getCurrent().getInput().isKeyPressed(GLFW.GLFW_KEY_SPACE)) || isPaused()) {
 			return;
 		}
 		
 		if (!running.get())
 			return;
-		
+
+	    final SpatialEntityMap sem = Entity.spatialMap();
+	    
 		//Create a list for tracking all of the entities that have moved
-		List<Entity> movedList = new CopyOnWriteArrayList<>();
+		List<Entity> movedList = Collections.synchronizedList(new ArrayList<>());
 		
 		//Convert all awake entities to futures that run updateEntity
-		Stream<Entity> es = Entity.spatialMap().getAwake().stream().map(e -> Entity.getEntity(e));
+		Stream<Entity> es = sem.getAwake().stream().parallel().map(e -> Entity.getEntity(e));
+		
 		List<CompletableFuture<Void>> futures = es
-				.parallel()
 				.map(i -> CompletableFuture.runAsync(() -> {
-					if (running.get())
+					if (running.get()) {
 						updateEntity(i, movedList);
+					}
 				}))
 				.collect(Collectors.toList());
 		//Collect all futures together
@@ -121,9 +132,9 @@ public class PhysicsSystem extends EntitySystem {
 		
 		//Wait for futures to complete
 		allOf.join();
-
+		
 		//Proceed to the next physics tick
-		physicsTick++;
+		physicsTick.incrementAndGet();
 	}
 
 	/**
@@ -147,9 +158,9 @@ public class PhysicsSystem extends EntitySystem {
 		}
 
 		//Checks if the Entity is both Collidable and has a CollisionShape
-		if (hasComponent(e, "CollisionShape") && hasComponent(e, "Collidable")) {
-			//Obtains the entity's shape component
-			EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
+		EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
+		boolean collidable = hasComponent(e, "Collidable");
+		if (shaComponent != null && collidable) {
 			//Obtains the entity's shape
 			Shape s = shaComponent.get();
 			//Converts the shape into a polygon
@@ -158,6 +169,7 @@ public class PhysicsSystem extends EntitySystem {
 			Polygon collideCheck = check.mergeNoRepeat(check.move(new Vector2f(v.x, v.y)));
 			
 			//Obtain all nearby entities
+
 			Entity[] entities = Entity.spatialMap().getEntitiesIn(collideCheck, true).toArray(Entity[]::new);
 			
 			//If there is at least 1 entity perform collision handling and then update velocity
@@ -165,17 +177,11 @@ public class PhysicsSystem extends EntitySystem {
 				velComponent.set(Math2.round(new Vector2f(v).add(handleCollision(e, s, collideCheck, entities)), 2));
 		}
 
-		//Handles movement differently when Snappy component is added
-		if (hasComponent(e, "Snappy")) {
-			handleSnappyMovment(e);
-		} else {
-			handleNormalMovment(e);
-		}
+		boolean moved = handleNormalMovment(e);
 
 		//Updates the collision shape of entities that have them
-		if (hasComponent(e, "CollisionShape") && hasComponent(e, "Collidable")) {
+		if (shaComponent != null && collidable) {
 			//Gets the entity's shape component
-			EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
 			//Tracking if the shape has been updated
 			boolean shapeUpdated = false;
 			
@@ -188,7 +194,7 @@ public class PhysicsSystem extends EntitySystem {
 				p = posComponent.get();
 				
 				//Checks if the center of the shape's distance is greater than a leniency value
-				if (s.getCenter().distance(p) > 0.001f) {
+				if (moved) {
 					//Locates the entity's locations in the map
 					SpatialPolygonHolder sph = Entity.spatialMap().locate(e);
 					
@@ -253,7 +259,7 @@ public class PhysicsSystem extends EntitySystem {
 		Polygon move = s.toPolygon();
 
 		//Filter out all invalid targets from the entities array
-		entities = Arrays.stream(entities).filter(e2 -> validCollisionEntity(e, e2)).toArray(Entity[]::new);
+		entities = Arrays.stream(entities).parallel().filter(e2 -> validCollisionEntity(e, e2)).toArray(Entity[]::new);
 		
 		//Sort the entities array by distance from the entity
 		Arrays.sort(entities, (a, b) -> {
@@ -380,8 +386,8 @@ public class PhysicsSystem extends EntitySystem {
 		//Handles snap based movement
 		long nextMove = snappyComponent.get();
 
-		p.x  = (int)(p.x/32)*32;
-		p.y =  (int)(p.y/32)*32;
+		p.set((int)(p.x/32)*32, (int)(p.y/32)*32);
+		
 		if (nextMove <= getPhysicsTick()) {
 			if (hasComponent(e, "CollisionShape")) {
 				EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
@@ -393,16 +399,16 @@ public class PhysicsSystem extends EntitySystem {
 		}
 
 		if (v.x < 32 && v.x > 0) {
-			v.x = 32;
+			v.setComponent(0, 32); // x
 		}
 		if (v.y < 32 && v.y > 0) {
-			v.y = 32;
+			v.setComponent(1, 32); // y
 		}
 		if (v.x > -32 && v.x < 0) {
-			v.x = -32;
+			v.setComponent(0, -32); // x
 		}
 		if (v.y > -32 && v.y < 0) {
-			v.y = -32;
+			v.setComponent(0, -32); // y
 		}
 
 		if (v.length() > 0) {
@@ -442,12 +448,12 @@ public class PhysicsSystem extends EntitySystem {
 	 * Finalizes normal movement
 	 * @param e Entity to finalize
 	 */
-	private void handleNormalMovment(Entity e) {
+	private boolean handleNormalMovment(Entity e) {
 		//Obtains the entity's position and velocity components
 		EntityComponent<Vector2f> posComponent = e.getComponent("Position");
 		EntityComponent<Vector2f> velComponent = e.getComponent("Velocity");
 
-		//Obtains the values of the positon and velocity components
+		//Obtains the values of the position and velocity components
 		Vector2fc cP = posComponent.get();
 		Vector2fc cV = velComponent.get();
 
@@ -468,11 +474,11 @@ public class PhysicsSystem extends EntitySystem {
 		//Put the entity to sleep if it isn't moving
 		if (v.length() == 0) {
 			Entity.spatialMap().sleepEntity(e);
-			return;
+			return false;
 		}
 		//Normal movement
 		posComponent.set(p.add(v));
-
+		
 		//Tracks the boolean facing direction of the entity
 		if (hasComponent(e, "BooleanDirection")) {
 			EntityComponent<Boolean> boolComponent = e.getComponent("BooleanDirection");
@@ -491,8 +497,9 @@ public class PhysicsSystem extends EntitySystem {
 
 		//So entities slide into place instead of abruptly stopping
 		if (v.length() > 0) {
-			velComponent.set(Math2.round(v.mul(PhysicsConfig.getFloat(SMOOTHING_FACTOR_CONFIG)), 2));
+			velComponent.set(Math2.round(v.mul(getConfig().getFloat(SMOOTHING_FACTOR_CONFIG)), 2));
 		}
+		return true;
 	}
 
 	/**
@@ -507,21 +514,29 @@ public class PhysicsSystem extends EntitySystem {
 	 * Initializes the Physics config
 	 */
 	public void initPhysicsConfig() {
-		PhysicsConfig.putIfAbsent(GRAVITY_CONFIG, false);
-		PhysicsConfig.putIfAbsent(GRAVITY_LEVEL_CONFIG, 0.98f);
-		PhysicsConfig.putIfAbsent(PRECISE_MODE_CONFIG, true);
-		PhysicsConfig.putIfAbsent(STAGGER_MODE_CONFIG, false);
-		PhysicsConfig.putIfAbsent(SMOOTHING_FACTOR_CONFIG, 0.75f);
-		System.out.println(PhysicsConfig.listValues());
+		
+		ObjectConfig conf = ObjectConfig.loadOrCreateFromFile("physics-config.json");
+		getGame().addConfig("PhysicsConfig", conf);
+		
+		getConfig().putIfAbsent(GRAVITY_CONFIG, false);
+		getConfig().putIfAbsent(GRAVITY_LEVEL_CONFIG, 0.98f);
+		getConfig().putIfAbsent(PRECISE_MODE_CONFIG, true);
+		getConfig().putIfAbsent(STAGGER_MODE_CONFIG, false);
+		getConfig().putIfAbsent(SMOOTHING_FACTOR_CONFIG, 0.75f);
+		System.out.println(getConfig());
 	}
 
+	public ObjectConfig getConfig() {
+		return getGame().<ObjectConfig>getConfig("PhysicsConfig");
+	}
+	
 	/**
 	 * Returns the current physics tick
 	 * Good for cooldowns
 	 * @return long Current tick
 	 */
 	public long getPhysicsTick() {
-		return physicsTick;
+		return physicsTick.get();
 	}
 
 	/**
@@ -534,6 +549,7 @@ public class PhysicsSystem extends EntitySystem {
 
 	@Override
 	public void destroy() {
+		getConfig().writeFile("physics-config.json");
 		running.set(false);
 	}
 }

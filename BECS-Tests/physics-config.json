@@ -1,0 +1,22 @@
+{
+  "smoothing_factor": {
+    "type": "java.lang.Float",
+    "value": 0.75
+  },
+  "gravity": {
+    "type": "java.lang.Boolean",
+    "value": false
+  },
+  "precise_mode": {
+    "type": "java.lang.Boolean",
+    "value": true
+  },
+  "stagger_mode": {
+    "type": "java.lang.Boolean",
+    "value": false
+  },
+  "gravity_level": {
+    "type": "java.lang.Float",
+    "value": 0.98
+  }
+}

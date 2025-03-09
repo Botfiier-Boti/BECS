@@ -2,6 +2,7 @@ package com.botifier.becs.graphics;
 
 import java.awt.Color;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.botifier.becs.graphics.images.Image;
@@ -19,7 +20,7 @@ public class AutoBatcher {
 	/**
 	 * Batch Queue
 	 */
-	private HashMap<Texture, ConcurrentLinkedQueue<Image>> queue = new HashMap<>();
+	private ConcurrentHashMap<Texture, ConcurrentLinkedQueue<Image>> queue = new ConcurrentHashMap<>();
 
 	/**
 	 * Draws every image with texture as a batch
@@ -72,15 +73,8 @@ public class AutoBatcher {
 	 * @param z int to be
 	 */
 	public void add(Image i, Shape s, Color c, float z) {
-		if (!queue.containsKey(i.getTexture())) {
-			queue.put(i.getTexture(), new ConcurrentLinkedQueue<>());
-		}
-		ConcurrentLinkedQueue<Image> toDraw = queue.get(i.getTexture());
-		Image build = new Image(i.getTexture());
-		build.setZ(z);
-		build.setShape(s);
-		build.setColor(c);
-		toDraw.add(build);
+		queue.computeIfAbsent(i.getTexture(), t -> new ConcurrentLinkedQueue<>())
+			.add(createImage(i, s, c, z));
 	}
 
 	/**
@@ -131,6 +125,22 @@ public class AutoBatcher {
 		queue.computeIfAbsent(i.getTexture(), k -> new ConcurrentLinkedQueue<Image>()).add(createImage(i, x, y, width, height, scale, c));
 	}
 
+	/**
+	 * Creates a copy Image with the specified parameters
+	 * @param i
+	 * @param s
+	 * @param c
+	 * @param z
+	 * @return
+	 */
+	private Image createImage(Image i, Shape s, Color c, float z) {
+		Image build = new Image(i.getTexture());
+		build.setZ(z);
+		build.setShape(s);
+		build.setColor(c);
+		return build;
+	}
+	
 	/**
 	 * Creates a copy Image at a specified location and custom data
 	 *

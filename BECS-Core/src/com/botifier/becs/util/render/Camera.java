@@ -15,6 +15,7 @@ import com.botifier.becs.graphics.FBO;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.shader.Shader;
 import com.botifier.becs.graphics.shader.ShaderProgram;
+import com.botifier.becs.util.Math2;
 import com.botifier.becs.util.ResourceManager;
 import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.SpatialPolygonHolder;
@@ -199,6 +200,8 @@ public class Camera {
 	public void setCenter(Vector2f center) {
 		if (center == null)
 			throw new IllegalArgumentException("Center cannot be null");
+		if (Math2.isNanOrInfinite(center))
+			throw new IllegalArgumentException("Center cannot be either NaN or Infinite");
 		this.changed = true;
 		this.camera.setCenter(center);
 	}
@@ -270,4 +273,13 @@ public class Camera {
 		return this.camera.getHeight();
 	}
 	
+	/**
+	 * Destroys the camera
+	 */
+	public void destroy() {
+		if (cameraBuffer != null) {
+			cameraBuffer.delete();
+			cameraBuffer = null;
+		}
+	}
 }

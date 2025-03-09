@@ -599,4 +599,12 @@ public class Math2 {
 
 		return collides;
 	}
+	
+	/**
+	 * Checks whether or not a Vector2f is NaN or Infinite
+	 * @return boolean If the vector contains a NaN or an Infinite value
+	 */
+	public static boolean isNanOrInfinite(Vector2f v) {
+		return !Float.isFinite(v.x) || !Float.isFinite(v.y);
+	}
 }

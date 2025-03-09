@@ -124,7 +124,19 @@ public class ControlsConfig implements IConfig {
 	 * Unfinished File reader
 	 */
 	@Override
-	public void readFile(File f) {
+	public ControlsConfig readFile(String f) {
 		//TODO: Remember to write this
+		return null;
+	}
+	
+	@Override
+	public ControlsConfig readFileOrDefault(String f, IConfig defaultConfig) {
+		return null;
+	}
+
+	@Override
+	public void writeFile(String f) {
+		// TODO Auto-generated method stub
+		
 	}
 }

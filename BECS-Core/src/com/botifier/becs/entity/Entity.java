@@ -2,6 +2,7 @@ package com.botifier.becs.entity;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -33,18 +34,18 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Spatial map of all entities
 	 */
-	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(256);
+	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(1024);
 
 	/**
 	 * List of current components for easy access
 	 * Won't contain components not added via addComponent()
 	 */
-	ConcurrentHashMap<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
+	protected ConcurrentHashMap<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
 	
 	/**
 	 * Stores the initial values of added components
 	 */
-	ConcurrentHashMap<String, Object> initialComponentValues = new ConcurrentHashMap<>();
+	protected ConcurrentHashMap<String, Object> initialComponentValues = new ConcurrentHashMap<>();
 
 	/**
 	 * Entity name
@@ -103,7 +104,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * 
 	 * Used when addEntity is run
 	 */
-	public void init() {}
+	public Entity init() {return this;}
 	
 	/**
 	 * "Kills" the entity by marking them as dead and removing them from the entity map
@@ -113,7 +114,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 
 		Game.getCurrent().getEventManager().executeEvent(new EntityDeathEvent(this.falseClone()));
 		
-		if (entities.contains(uuid))
+		if (entities.containsKey(uuid))
 			entities.remove(uuid);
 		for (String s : components.keySet()) {
 			removeComponent(s);
@@ -215,7 +216,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @param value Object value stored within the component
 	 */
 	public void updateOrAddComponent(String componentName, Object value) {
-		if (components.contains(componentName.toLowerCase())) {
+		if (components.containsKey(componentName.toLowerCase())) {
 			EntityComponent<Object> ec = getComponent(componentName);
 			ec.set(value);
 			return;
@@ -267,8 +268,12 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @param name String Name of the component
 	 * @return boolean Whether or not the entity has the specified component
 	 */
-	public boolean hasComponent(String name) {
-		return components.containsKey(name.toLowerCase());
+	public boolean hasComponent(String... name) {
+		for (String s : name) {
+			if (components.containsKey(s.toLowerCase()))
+				return true;
+		}
+		return false;
 	}
 
 	/**
@@ -427,11 +432,8 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * Adds an Entity to the entity map
 	 * @param e Entity To add
 	 */
-	public static void addEntity(Entity e) {
-		if (!entities.contains(e.getUUID())) {
-			e.init();
-			entities.put(e.getUUID(), e);
-		}
+	public static Entity addEntity(Entity e) {
+		return entities.putIfAbsent(e.getUUID(), e.init());
 	}
 
 }
