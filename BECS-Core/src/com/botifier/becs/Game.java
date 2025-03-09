@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -466,7 +467,6 @@ public abstract class Game {
 		}
 
 		window.setIcon(icon);
-
 		ScheduledExecutorService schedular = Executors.newScheduledThreadPool(1, new HighPriorityThreadFactory());
 		ScheduledFuture<?> update = schedular.scheduleAtFixedRate(new UpdateRunnable(), 0, 1000 / targetUPS,
 				TimeUnit.MILLISECONDS);
@@ -482,7 +482,7 @@ public abstract class Game {
 		t.start();
 
 		while (running.get()) {
-			GLFW.glfwWaitEvents();
+			GLFW.glfwWaitEventsTimeout(0.01);
 			Thread.yield();
 		}
 		
@@ -961,7 +961,7 @@ public abstract class Game {
 	 * Runnable for the update thread
 	 */
 	private class UpdateRunnable implements Runnable {
-
+		
 		@Override
 		public void run() {
 			if (!running.get()) {
@@ -974,10 +974,12 @@ public abstract class Game {
 			delta.set(t.getDelta()); // set delta
 			accumulator += delta.get();
 			try {
-				if (!noLock) {
-					lock.lock(); // Obtains a lock if locking is enabled
-					tick();
-					lock.unlock(); // Unlocks if locking is enabled
+				if (!noLock && lock.tryLock(5, TimeUnit.MILLISECONDS)) {
+					try {
+						tick();
+					} finally {
+						lock.unlock(); // Unlocks if locking is enabled
+					}
 				} else
 					tick();
 			} catch (Exception e) {
@@ -990,10 +992,11 @@ public abstract class Game {
 		private void tick() {
 			update(); // Performs an update
 			
-			systems.stream().forEach(system -> { // Runs all systems
+			for (EntitySystem system : systems) {
 				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); // Obtains all valid entities
 				system.apply(entities); // Applies the system to all of those entities
-			});
+			}
+			
 			t.updateUPS(); // Updates UPS counter (Updates Per Second)
 		}
 	}
@@ -1002,14 +1005,16 @@ public abstract class Game {
 	 * Runnable for the render thread
 	 */
 	private class RenderRunnable implements Runnable {
-
+		
 		@Override
 		public void run() {
 			if (!running.get()) {
 				return;
 			}
 			final ReentrantLock lock = l;
-			glfwMakeContextCurrent(window.getId()); // Obtains context
+			long currentContext = GLFW.glfwGetCurrentContext();
+			if (currentContext != window.getId())
+				glfwMakeContextCurrent(window.getId()); // Obtains context
 			GL.setCapabilities(window.getGLCapabilities()); // Obtains the current window's GL Capabilities
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
 

@@ -182,7 +182,7 @@ public class HelloWorld extends Game{
 			Entity.addEntity(wew);
 		}
 		
-		IntStream.range(0, 1).parallel().forEach(i -> {
+		IntStream.range(0, 10000).parallel().forEach(i -> {
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override
@@ -194,14 +194,12 @@ public class HelloWorld extends Game{
 					e.setZ(-1);
 					addComponent("Image", e);
 					addComponent("Position", new Vector2f(-800+localI*-rr.getWidth(), -400));
-					addComponent("Velocity", new Vector2f(0, 0));
 					addComponent("CollisionShape", rr);
 					addComponent("Collidable", true);
 					addComponent("IgnoreWith", "Bullet");
 					addComponent("Bullet", true);
-					addComponent("Speed", 4f);
 					addComponent("Solid", true);
-					addComponent("PhysicsEnabled", new PhysicsListener(e.getUUID()));
+					//addComponent("PhysicsEnabled", new PhysicsListener(e.getUUID()));
 					//addComponent("ArrowKeyControlled", true);
 					return this;
 				}
@@ -211,6 +209,7 @@ public class HelloWorld extends Game{
 
 		addSystem(ps);
 		addSystem(new ArrowKeyControlsSystem(this));
+		
 
 
 		rotRect = new RotatableRectangle(400, 400, 128, 128, (float) (Math.PI*0));
@@ -258,6 +257,7 @@ public class HelloWorld extends Game{
 		
 		camera = new Camera(this, new Vector2f(0, 0), this.getWidth(), this.getHeight());
 		camera.setFollowEntity(center);
+
 		
 		getRenderer().setZoom(1f);
 		getRenderer().setCameraCenter(new Vector2f(0, 0));

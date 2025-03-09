@@ -3,24 +3,20 @@
     "type": "java.lang.Float",
     "value": 0.75
   },
-  "precise_mode": {
-    "type": "java.lang.Boolean",
-    "value": true
-  },
-  "gravity_level": {
-    "type": "java.lang.Float",
-    "value": 0.98
-  },
-  "base_speed": {
-    "type": "java.lang.Float",
-    "value": 60.0
-  },
   "gravity": {
     "type": "java.lang.Boolean",
     "value": false
   },
+  "precise_mode": {
+    "type": "java.lang.Boolean",
+    "value": true
+  },
   "stagger_mode": {
     "type": "java.lang.Boolean",
     "value": false
+  },
+  "gravity_level": {
+    "type": "java.lang.Float",
+    "value": 0.98
   }
 }

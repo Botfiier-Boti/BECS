@@ -34,7 +34,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Spatial map of all entities
 	 */
-	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(32);
+	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(1024);
 
 	/**
 	 * List of current components for easy access
@@ -269,7 +269,11 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @return boolean Whether or not the entity has the specified component
 	 */
 	public boolean hasComponent(String... name) {
-		return Arrays.stream(name).parallel().anyMatch(s -> components.containsKey(s.toLowerCase()));
+		for (String s : name) {
+			if (components.containsKey(s.toLowerCase()))
+				return true;
+		}
+		return false;
 	}
 
 	/**

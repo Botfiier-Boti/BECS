@@ -63,7 +63,7 @@ public class Renderer {
 	 * Size of each buffer
 	 * Divisible by the size of each vertex for maximum efficiency.
 	 */
-	public static final int BUFFER_SIZE = 2400000;// 19200;//30720;
+	public static final int BUFFER_SIZE = 19200;//2400000;//30720;
 
 	/**
 	 * Amount of batches the game can create

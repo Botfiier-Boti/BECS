@@ -122,12 +122,11 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		//If toAdd has any movement update the velocity
 		if (toAdd.length() > 0) {
 			velocityComponent.set(v.add(toAdd));
-			//Entity.spatialMap().wakeEntity(e);
 		}
 		
 	}
 	@Override
 	public void destroy() {
-
+		
 	}
 }

@@ -65,7 +65,7 @@ public class EntityComponent<T> implements Cloneable {
 	 * @return Information within the component of type T
 	 */
 	public T get() {
-		return information.getPlain();
+		return information.get();
 	}
 
 	/**

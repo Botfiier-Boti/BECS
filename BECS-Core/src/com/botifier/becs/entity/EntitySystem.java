@@ -63,14 +63,11 @@ public abstract class EntitySystem {
 		if (requiredComponents == null || requiredComponents.length == 0) {
 			return Entity.getEntities();
 		}
+		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
 		Set<Entity> hold = new HashSet<>();
 		
-		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
-		hold = entities.stream().parallel().filter(e -> {
-			return e.hasComponent(requiredComponents);
-		}).collect(Collectors.toSet());
+		entities.parallelStream().filter(e -> e.hasComponent(requiredComponents)).forEachOrdered(hold::add);;
 		return hold;
-
 	}
 
 	/**

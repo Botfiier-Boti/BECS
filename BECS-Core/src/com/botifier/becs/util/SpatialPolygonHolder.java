@@ -1,8 +1,13 @@
 package com.botifier.becs.util;
 
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 import org.joml.Intersectionf;
 import org.joml.Vector2f;
@@ -52,16 +57,17 @@ public class SpatialPolygonHolder implements Cloneable {
 	 * @return Set/<Vector2f/> The rasterized points
 	 */
 	private static Set<Vector2f> gridifyPolygon(Polygon p, int cellSize) {
-		Set<Vector2f> validHashes = ConcurrentHashMap.newKeySet();
+		Set<Vector2f> validHashes = null;
 
 		RotatableRectangle rr = p.getBoundingBox();
 
-		long maxX = Math.floorDiv((long) rr.getMaxX(), cellSize)+1;
-		long minX = Math.floorDiv((long) rr.getMinX(), cellSize)-1;
-		long maxY = Math.floorDiv((long) rr.getMaxY(), cellSize)+1;
-		long minY = Math.floorDiv((long) rr.getMinY(), cellSize)-1;
+		final long maxX = Math.floorDiv((long) rr.getMaxX(), cellSize)+1;
+		final long minX = Math.floorDiv((long) rr.getMinX(), cellSize)-1;
+		final long maxY = Math.floorDiv((long) rr.getMaxY(), cellSize)+1;
+		final long minY = Math.floorDiv((long) rr.getMinY(), cellSize)-1;
 
-		for (long y = minY; y <= maxY; y++) {
+		validHashes = LongStream.rangeClosed(minY, maxY).parallel().mapToObj(y -> {
+			Set<Vector2f> validXHashes = new HashSet<>();
 			for (long x = minX; x <= maxX; x++) {
 
 				float cellMinX = x * cellSize - cellSize/2;
@@ -76,10 +82,12 @@ public class SpatialPolygonHolder implements Cloneable {
 						new Vector2f(cellMinX, cellMaxY));
 
 				if (Intersectionf.testPolygonPolygon(p.getPoints(), cellPolygon.getPoints())) {
-					validHashes.add(SpatialEntityMap.getLocation(cellMinX, cellMinY, cellSize));
+					validXHashes.add(SpatialEntityMap.getLocation(cellMinX, cellMinY, cellSize));
 				}
 			}
-		}
+			return validXHashes;
+		}).flatMap(s -> s.stream()).collect(Collectors.toSet());
+		
 		return validHashes;
 	}
 
@@ -106,6 +114,6 @@ public class SpatialPolygonHolder implements Cloneable {
 
 	@Override
 	public SpatialPolygonHolder clone() {
-		return new SpatialPolygonHolder(owner, hashes, cellSize);
+		return new SpatialPolygonHolder(owner, new HashSet<>(hashes), cellSize);
 	}
 }

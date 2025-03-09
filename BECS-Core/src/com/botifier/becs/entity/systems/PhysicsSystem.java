@@ -5,6 +5,7 @@ import static com.botifier.becs.entity.EntityComponentManager.hasComponent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -109,7 +110,7 @@ public class PhysicsSystem extends EntitySystem {
 	    final SpatialEntityMap sem = Entity.spatialMap();
 	    
 		//Create a list for tracking all of the entities that have moved
-		List<Entity> movedList = new CopyOnWriteArrayList<>();
+		List<Entity> movedList = Collections.synchronizedList(new ArrayList<>());
 		
 		//Convert all awake entities to futures that run updateEntity
 		Stream<Entity> es = sem.getAwake().stream().parallel().map(e -> Entity.getEntity(e));
@@ -131,7 +132,7 @@ public class PhysicsSystem extends EntitySystem {
 		
 		//Wait for futures to complete
 		allOf.join();
-
+		
 		//Proceed to the next physics tick
 		physicsTick.incrementAndGet();
 	}
@@ -157,9 +158,9 @@ public class PhysicsSystem extends EntitySystem {
 		}
 
 		//Checks if the Entity is both Collidable and has a CollisionShape
-		if (hasComponent(e, "CollisionShape") && hasComponent(e, "Collidable")) {
-			//Obtains the entity's shape component
-			EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
+		EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
+		boolean collidable = hasComponent(e, "Collidable");
+		if (shaComponent != null && collidable) {
 			//Obtains the entity's shape
 			Shape s = shaComponent.get();
 			//Converts the shape into a polygon
@@ -176,17 +177,11 @@ public class PhysicsSystem extends EntitySystem {
 				velComponent.set(Math2.round(new Vector2f(v).add(handleCollision(e, s, collideCheck, entities)), 2));
 		}
 
-		//Handles movement differently when Snappy component is added
-		if (hasComponent(e, "Snappy")) {
-			handleSnappyMovment(e);
-		} else {
-			handleNormalMovment(e);
-		}
+		boolean moved = handleNormalMovment(e);
 
 		//Updates the collision shape of entities that have them
-		if (hasComponent(e, "CollisionShape") && hasComponent(e, "Collidable")) {
+		if (shaComponent != null && collidable) {
 			//Gets the entity's shape component
-			EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
 			//Tracking if the shape has been updated
 			boolean shapeUpdated = false;
 			
@@ -199,7 +194,7 @@ public class PhysicsSystem extends EntitySystem {
 				p = posComponent.get();
 				
 				//Checks if the center of the shape's distance is greater than a leniency value
-				if (s.getCenter().distance(p) > 0.001f) {
+				if (moved) {
 					//Locates the entity's locations in the map
 					SpatialPolygonHolder sph = Entity.spatialMap().locate(e);
 					
@@ -453,7 +448,7 @@ public class PhysicsSystem extends EntitySystem {
 	 * Finalizes normal movement
 	 * @param e Entity to finalize
 	 */
-	private void handleNormalMovment(Entity e) {
+	private boolean handleNormalMovment(Entity e) {
 		//Obtains the entity's position and velocity components
 		EntityComponent<Vector2f> posComponent = e.getComponent("Position");
 		EntityComponent<Vector2f> velComponent = e.getComponent("Velocity");
@@ -479,7 +474,7 @@ public class PhysicsSystem extends EntitySystem {
 		//Put the entity to sleep if it isn't moving
 		if (v.length() == 0) {
 			Entity.spatialMap().sleepEntity(e);
-			return;
+			return false;
 		}
 		//Normal movement
 		posComponent.set(p.add(v));
@@ -504,6 +499,7 @@ public class PhysicsSystem extends EntitySystem {
 		if (v.length() > 0) {
 			velComponent.set(Math2.round(v.mul(getConfig().getFloat(SMOOTHING_FACTOR_CONFIG)), 2));
 		}
+		return true;
 	}
 
 	/**
