@@ -439,6 +439,8 @@ public abstract class Game {
 		eventManager.registerListener(wl);
 		worldListenerId.set(wl.getOwner());
 
+		input = new Input(window.getId());
+		
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 
 			@Override
@@ -450,7 +452,6 @@ public abstract class Game {
 
 		init();
 
-		input = new Input(window.getId());
 		glfwMakeContextCurrent(0);
 	}
 

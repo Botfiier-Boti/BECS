@@ -3,6 +3,7 @@ package com.botifier.becs.entity;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -29,7 +30,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Map containing all entities and their UUIDs
 	 */
-	private static ConcurrentHashMap<UUID, Entity> entities = new ConcurrentHashMap<>();
+	private static Map<UUID, Entity> entities = new ConcurrentHashMap<>();
 
 	/**
 	 * Spatial map of all entities
@@ -40,12 +41,12 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * List of current components for easy access
 	 * Won't contain components not added via addComponent()
 	 */
-	protected ConcurrentHashMap<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
+	protected transient Map<String, EntityComponent<?>> components = new ConcurrentHashMap<>();
 	
 	/**
 	 * Stores the initial values of added components
 	 */
-	protected ConcurrentHashMap<String, Object> initialComponentValues = new ConcurrentHashMap<>();
+	protected Map<String, Object> initialComponentValues = new ConcurrentHashMap<>();
 
 	/**
 	 * Entity name
@@ -63,9 +64,9 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	private boolean dead = false;
 
 	/**
-	 * Whether or not this entity's sprites should be automatically batched
+	 * Whether or not this entity's textures should be automatically batched
 	 */
-	private boolean autoBatch = true;
+	private boolean autoBatch = false;
 
 	/**
 	 * Whether or not the Entity is a ruse
@@ -434,6 +435,19 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 */
 	public static Entity addEntity(Entity e) {
 		return entities.putIfAbsent(e.getUUID(), e.init());
+	}
+	
+	/**
+	 * Adds and grants an Entity a specific UUID if it doesn't already exist
+	 * @param e Entity To add
+	 * @param u UUID to use
+	 * @return Entity Added Entity
+	 */
+	public static Entity addEntity(Entity e, UUID u) {
+		if (entities.containsKey(e.getUUID()))
+			throw new IllegalArgumentException("Error: You cannot add an existing entity to a different UUID.");
+		e.uuid = u;
+		return addEntity(e);
 	}
 
 }

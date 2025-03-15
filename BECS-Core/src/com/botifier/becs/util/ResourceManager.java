@@ -72,10 +72,14 @@ public class ResourceManager {
 	}
 	
 	public static ShaderProgram putShaderProgram(String name, ShaderProgram sp) {
+		if (name == null)
+			return null;
 		return shaderPrograms.put(name.toLowerCase(), sp);
 	}
 	
 	public static ShaderProgram getShaderProgram(String name) {
+		if (name == null)
+			return null;
 		return shaderPrograms.getOrDefault(name.toLowerCase(), null);
 	}
 	

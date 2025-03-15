@@ -112,7 +112,7 @@ public class EntityComponent<T> implements Cloneable {
 		return owner != null ? owner.getUUID() : null;
 	}
 
-	public Class<?> getDataType() {
+	public Class<T> getDataType() {
 		return type;
 	}
 	@SuppressWarnings("unchecked")

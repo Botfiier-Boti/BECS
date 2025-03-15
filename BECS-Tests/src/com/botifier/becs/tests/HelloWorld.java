@@ -293,6 +293,14 @@ public class HelloWorld extends Game{
 	public void draw(Renderer r, WorldState state, RotatableRectangle camera, float alpha) {
 		this.camera.draw(r);
 		
+		if (center != null) {
+			EntityComponent<Vector2f> velComp = center.getComponent("Velocity");
+			EntityComponent<Vector2f> posComp = center.getComponent("Position");
+			Vector2f v = velComp.get();
+			Vector2f p = posComp.get();
+			r.writeText("Velocity: "+v.x+", "+v.y, -r.getCurrentWidth()/2+20, r.getCurrentHeight()/2-20);
+			r.writeText("Position: "+p.x+", "+p.y, -r.getCurrentWidth()/2+20, r.getCurrentHeight()/2-40);
+		}
 		/*
 		if (center != null) {
 			if (center.hasComponent("Position")) {
