@@ -323,21 +323,18 @@ public class Texture {
 			Texture t = textureLocations.get(locationString);
 			return t;
 		}
-		try (MemoryStack stack = MemoryStack.stackPush()) {
+		image = MemoryUtil.memCalloc(width * height * 4);
 
-			image = stack.calloc(width * height * 4);
-
-			for (int y = height - 1; y >= 0; y--) {
-				for (int x = 0; x < width; x++) {
-					image.put((byte) (c.getRed() & 0xFF));
-					image.put((byte) (c.getGreen() & 0xFF));
-					image.put((byte) (c.getBlue() & 0xFF));
-					image.put((byte) (c.getAlpha() & 0xFF));
-				}
+		for (int y = height - 1; y >= 0; y--) {
+			for (int x = 0; x < width; x++) {
+				image.put((byte) (c.getRed() & 0xFF));
+				image.put((byte) (c.getGreen() & 0xFF));
+				image.put((byte) (c.getBlue() & 0xFF));
+				image.put((byte) (c.getAlpha() & 0xFF));
 			}
-
-			image.flip();
 		}
+
+		image.flip();
 		Texture t = createTexture(width, height, image, locationString);
 		return t;
 	}

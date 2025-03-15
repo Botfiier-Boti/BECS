@@ -1025,7 +1025,12 @@ public class Renderer {
 		numInstances += num;
 	}
 
+	public void setShaderProgram(ShaderProgram program) {
+		this.program = program;
+	}
+	
 	/**
+	 * 
 	 * Returns the first open sprite batch and expands the buffer if needed
 	 *
 	 * @return SpriteBatch that is open
