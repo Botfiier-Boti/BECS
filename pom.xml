@@ -326,6 +326,7 @@
 		</plugins>
 	</build>
 	<modules>
+		<module>BECS-Events</module>
 		<module>BECS-Assets</module>
 		<module>BECS-Core</module>
 		<module>BECS-Tests</module>
