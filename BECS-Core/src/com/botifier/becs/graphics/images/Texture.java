@@ -66,6 +66,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
+import com.botifier.becs.Game;
+
 public class Texture {
 
 	/**
@@ -357,7 +359,7 @@ public class Texture {
 			int pixels[] = new int[bi.getWidth() * bi.getHeight()];
 			bi.getRGB(0, 0, bi.getWidth(), bi.getHeight(), pixels, 0, bi.getWidth());
 
-			image = stack.calloc(bi.getWidth() * bi.getHeight() * 4);
+			image = MemoryUtil.memCalloc(bi.getWidth() * bi.getHeight() * 4);
 
 			for (int y = bi.getHeight() - 1; y >= 0; y--) {
 				for (int x = 0; x < bi.getWidth(); x++) {

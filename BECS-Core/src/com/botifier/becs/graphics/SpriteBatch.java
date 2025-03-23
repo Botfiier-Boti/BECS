@@ -279,14 +279,39 @@ public class SpriteBatch {
         					 1, 0};
 
 		drawQuad(bounds, texCoords, z, c);
-        /*
-		drawVertex(bl.x, bl.y, z, c, 0, 0);
-		drawVertex(tl.x, tl.y, z, c, 0, 1);
-		drawVertex(tr.x, tr.y, z, c, 1, 1);
 
-		drawVertex(bl.x, bl.y, z, c, 0, 0);
-		drawVertex(tr.x, tr.y, z, c, 1, 1);
-		drawVertex(br.x, br.y, z, c, 1, 0);*/
+		numInstances++;
+	}
+	
+	public void drawRotatedRectangle(RotatableRectangle rotRect, float[] texCoords, float z, Color c, boolean flipped) {
+		if (rotRect == null) {
+			return;
+		}
+		if (!ensureSpace(6)) {
+			r.drawRotatedRectangle(rotRect, c);
+			return;
+		}
+
+		Vector2f bl = rotRect.getBottomLeft();
+        Vector2f br = rotRect.getBottomRight();
+        Vector2f tl = rotRect.getTopLeft();
+        Vector2f tr = rotRect.getTopRight();
+
+        if (flipped) {
+            Vector2f temp = bl;
+            bl = br;
+            br = temp;
+            temp = tl;
+            tl = tr;
+            tr = temp;
+        }
+
+        float[] bounds = {bl.x, bl.y,
+        				  br.x, br.y,
+        				  tr.x, tr.y,
+        				  tl.x, tl.y};
+
+		drawQuad(bounds, texCoords, z, c);
 
 		numInstances++;
 	}

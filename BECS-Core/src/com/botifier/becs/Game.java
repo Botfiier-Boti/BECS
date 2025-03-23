@@ -666,6 +666,13 @@ public abstract class Game {
 		systems.forEach(s -> s.destroy());
 		systems.clear();
 	}
+	
+	public void grabContext() {
+		long currentContext = GLFW.glfwGetCurrentContext();
+		if (currentContext != window.getId())
+			glfwMakeContextCurrent(window.getId()); // Obtains context
+		GL.setCapabilities(window.getGLCapabilities()); 
+	}
 
 	/**
 	 * Plays a sound from file location
@@ -983,6 +990,8 @@ public abstract class Game {
 					}
 				} else
 					tick();
+			} catch (InterruptedException ie) {
+				//Don't really care if the lock is interrupted
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {

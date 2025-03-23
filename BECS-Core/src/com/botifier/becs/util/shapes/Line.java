@@ -95,11 +95,33 @@ public class Line extends Shape {
 	public Vector2f getPointOfIntersection(Line l) {
 		Vector2f hold = new Vector2f();
 		boolean intersects = Intersectionf.intersectLineLine(p1.x, p1.y, p2.x, p2.y, l.p1.x, l.p1.y, l.p2.x, l.p2.y, hold);
+		if (!contains(hold))
+			return null;
 		return intersects ? hold : null;
+	}
+	
+	public Vector2f getPointOfIntersectionWithRay(Line l) {
+		Vector2f hold = new Vector2f(p1);
+		Vector2f direction = getDirection();
+		float intersection = Intersectionf.intersectRayLineSegment(p1, direction, l.p1, l.p2);
+		if (intersection <= 0f)
+			return null;
+		
+		direction.mul(intersection);
+		return hold.add(direction);
 	}
 
 	public Vector2f getDirection() {
 		return new Vector2f(p2).sub(p1).normalize();
+	}
+	
+	public Vector2f getNormal() {
+		Vector2f direction = getDirection();
+		return new Vector2f(-direction.y, direction.x).normalize();
+	}
+	
+	public Vector2f[] toArray() {
+		return new Vector2f[] {new Vector2f(p1), new Vector2f(p2)};
 	}
 
 	@Override
@@ -137,6 +159,21 @@ public class Line extends Shape {
 		p1.max(p2, bigger);
 		p1.min(p2, smaller);
 
+		boolean xB = x <= bigger.x && x >= smaller.x;
+		boolean yB = y <= bigger.y && y >= smaller.y;
+
+		return xB && yB;
+	}
+	
+	public boolean contains(float x, float y, float leeway) {
+		Vector2f bigger = new Vector2f();
+		Vector2f smaller = new Vector2f();
+		p1.max(p2, bigger);
+		p1.min(p2, smaller);
+
+		bigger.add(leeway, leeway);
+		smaller.sub(leeway, leeway);
+		
 		boolean xB = x <= bigger.x && x >= smaller.x;
 		boolean yB = y <= bigger.y && y >= smaller.y;
 

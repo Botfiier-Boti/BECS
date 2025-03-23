@@ -31,7 +31,7 @@ public class Image {
 	/**
 	 * Image position
 	 */
-	private Vector2f pos;
+	private Vector2f pos = new Vector2f();
 
 	/**
 	 * Image offset
