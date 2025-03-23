@@ -25,8 +25,10 @@ import java.awt.Color;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -98,7 +100,7 @@ public class Renderer {
 	/**
 	 * Each Sprite Batch
 	 */
-	private ArrayList<SpriteBatch> batches = new ArrayList<>();
+	private List<SpriteBatch> batches = new CopyOnWriteArrayList<>();
 
 	/**
 	 * The Byte Buffer
@@ -498,6 +500,14 @@ public class Renderer {
 			batch.drawRotatedRectangle(rotRect, z, c, flipped);
 		}
 	}
+	
+	public void drawRotatedRectangleWithTexCoords(RotatableRectangle rotRect, float[] texCoords, float z, Color c, boolean flipped) {
+		SpriteBatch batch = getFirstOpenBatch(144);
+
+		if (batch != null) {
+			batch.drawRotatedRectangle(rotRect, texCoords, z, c, flipped);
+		}
+	}
 
 	/**
 	 * Draws a line
@@ -528,10 +538,6 @@ public class Renderer {
 	 * @param lineWidth  Line width
 	 */
 	public void drawCircle(float x, float y, float radius, Color c, int resolution, int lineWidth) {
-		FrustumIntersection i = getFrustumIntersection();
-		if (!i.testPlaneXY(x - radius, y - radius, x + radius, y - radius)) {
-			return;
-		}
 		SpriteBatch batch = getFirstOpenBatch(resolution * 24);
 
 		if (batch != null) {
@@ -549,10 +555,6 @@ public class Renderer {
 	 * @param resolution Circle resolution
 	 */
 	public void drawFilledCircle(float x, float y, float radius, Color c, int resolution) {
-		FrustumIntersection i = getFrustumIntersection();
-		if (!i.testPlaneXY(x - radius, y - radius, x + radius, y - radius)) {
-			return;
-		}
 		SpriteBatch batch = getFirstOpenBatch();
 
 		if (batch != null) {
@@ -650,6 +652,7 @@ public class Renderer {
 			p.use();
 		} else {
 			program.use();
+			updateProjectionMatrix(program, projection);
 		}
 		vbo.bind(GL_ARRAY_BUFFER);
 
@@ -1025,7 +1028,12 @@ public class Renderer {
 		numInstances += num;
 	}
 
+	public void setShaderProgram(ShaderProgram program) {
+		this.program = program;
+	}
+	
 	/**
+	 * 
 	 * Returns the first open sprite batch and expands the buffer if needed
 	 *
 	 * @return SpriteBatch that is open

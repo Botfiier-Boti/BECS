@@ -25,6 +25,7 @@
 
 package com.botifier.becs.graphics.images;
 
+import static org.lwjgl.glfw.GLFW.glfwSetWindowIcon;
 import static org.lwjgl.opengl.GL11.GL_NEAREST;
 import static org.lwjgl.opengl.GL11.GL_RGBA;
 import static org.lwjgl.opengl.GL11.GL_RGBA8;
@@ -40,6 +41,7 @@ import static org.lwjgl.opengl.GL11.glGenTextures;
 import static org.lwjgl.opengl.GL11.glTexImage2D;
 import static org.lwjgl.opengl.GL11.glTexParameteri;
 import static org.lwjgl.opengl.GL13.GL_CLAMP_TO_BORDER;
+import static org.lwjgl.system.MemoryStack.stackPush;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -59,9 +61,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.imageio.ImageIO;
 
 import org.lwjgl.BufferUtils;
+import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+
+import com.botifier.becs.Game;
 
 public class Texture {
 
@@ -265,9 +270,9 @@ public class Texture {
 		t.setParameter(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		t.setParameter(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+		t.image = data;
 		t.uploadData(GL_RGBA8, width, height, GL_RGBA, data);
 
-		t.image = data;
 		if (location == null || location.isBlank())
 			t.location = "**internal**:" + t.hashCode();
 		else
@@ -320,21 +325,18 @@ public class Texture {
 			Texture t = textureLocations.get(locationString);
 			return t;
 		}
-		try (MemoryStack stack = MemoryStack.stackPush()) {
+		image = MemoryUtil.memCalloc(width * height * 4);
 
-			image = BufferUtils.createByteBuffer(width * height * 4);
-
-			for (int y = height - 1; y >= 0; y--) {
-				for (int x = 0; x < width; x++) {
-					image.put((byte) (c.getRed() & 0xFF));
-					image.put((byte) (c.getGreen() & 0xFF));
-					image.put((byte) (c.getBlue() & 0xFF));
-					image.put((byte) (c.getAlpha() & 0xFF));
-				}
+		for (int y = height - 1; y >= 0; y--) {
+			for (int x = 0; x < width; x++) {
+				image.put((byte) (c.getRed() & 0xFF));
+				image.put((byte) (c.getGreen() & 0xFF));
+				image.put((byte) (c.getBlue() & 0xFF));
+				image.put((byte) (c.getAlpha() & 0xFF));
 			}
-
-			image.flip();
 		}
+
+		image.flip();
 		Texture t = createTexture(width, height, image, locationString);
 		return t;
 	}
@@ -357,7 +359,7 @@ public class Texture {
 			int pixels[] = new int[bi.getWidth() * bi.getHeight()];
 			bi.getRGB(0, 0, bi.getWidth(), bi.getHeight(), pixels, 0, bi.getWidth());
 
-			image = BufferUtils.createByteBuffer(bi.getWidth() * bi.getHeight() * 4);
+			image = MemoryUtil.memCalloc(bi.getWidth() * bi.getHeight() * 4);
 
 			for (int y = bi.getHeight() - 1; y >= 0; y--) {
 				for (int x = 0; x < bi.getWidth(); x++) {
@@ -442,6 +444,14 @@ public class Texture {
 	 */
 	public ByteBuffer getBuffer() {
 		return image;
+	}
+	
+	public GLFWImage asGLFWImage() {
+		try (MemoryStack stack = stackPush()) {
+			GLFWImage image = GLFWImage.malloc(stack);
+			image.set(getWidth(), getHeight(), getBuffer());
+			return image;
+		}
 	}
 
 	/**

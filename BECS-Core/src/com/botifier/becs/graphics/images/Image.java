@@ -31,7 +31,7 @@ public class Image {
 	/**
 	 * Image position
 	 */
-	private Vector2f pos;
+	private Vector2f pos = new Vector2f();
 
 	/**
 	 * Image offset
@@ -74,7 +74,7 @@ public class Image {
 	 * Z position of the image
 	 * could update everything to Vector3f but eh
 	 */
-	private float z = 0;
+	private float z = 1;
 
 	/**
 	 * Texture file location
@@ -512,6 +512,10 @@ public class Image {
 	 */
 	public float getScale() {
 		return scale;
+	}
+	
+	public String getTextureLocation() {
+		return location != null ? location : texture.getOriginLocation(); 
 	}
 
 }

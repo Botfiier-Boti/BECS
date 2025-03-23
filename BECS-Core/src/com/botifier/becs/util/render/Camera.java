@@ -170,8 +170,10 @@ public class Camera {
 	 */
 	public void setFollowEntity(Entity e) {
 		if (e == null) {
-			this.game.getEventManager().unregisterListener(cl);
-			this.cl = null;
+			if (cl != null) {
+				this.game.getEventManager().unregisterListener(cl);
+				this.cl = null;
+			}
 			return;
 		}
 		if (!e.hasComponent("Position"))

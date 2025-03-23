@@ -439,6 +439,8 @@ public abstract class Game {
 		eventManager.registerListener(wl);
 		worldListenerId.set(wl.getOwner());
 
+		input = new Input(window.getId());
+		
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 
 			@Override
@@ -450,7 +452,6 @@ public abstract class Game {
 
 		init();
 
-		input = new Input(window.getId());
 		glfwMakeContextCurrent(0);
 	}
 
@@ -664,6 +665,13 @@ public abstract class Game {
 	public void clearSystems() {
 		systems.forEach(s -> s.destroy());
 		systems.clear();
+	}
+	
+	public void grabContext() {
+		long currentContext = GLFW.glfwGetCurrentContext();
+		if (currentContext != window.getId())
+			glfwMakeContextCurrent(window.getId()); // Obtains context
+		GL.setCapabilities(window.getGLCapabilities()); 
 	}
 
 	/**
@@ -982,6 +990,8 @@ public abstract class Game {
 					}
 				} else
 					tick();
+			} catch (InterruptedException ie) {
+				//Don't really care if the lock is interrupted
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {

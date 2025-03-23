@@ -28,7 +28,7 @@ public class Circle extends Shape {
 	/**
 	 * The resolution when drawn/Polygonized
 	 */
-	private final int POLYGON_RESOLUTION = 360;
+	private final int POLYGON_RESOLUTION = 64;
 
 	/**
 	 * The radius
@@ -108,7 +108,7 @@ public class Circle extends Shape {
 	public void drawFilled(Renderer r, Color c) {
 		Image.WHITE_PIXEL.bind();
 		r.begin();
-			r.drawFilledCircle(center.x, center.y, radius, c, 100);
+			drawRaw(r, c);
 		r.end();
 	}
 

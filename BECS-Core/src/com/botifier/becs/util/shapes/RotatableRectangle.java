@@ -10,6 +10,7 @@ import org.joml.Vector2f;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
+import com.botifier.becs.graphics.images.Texture;
 import com.botifier.becs.util.Math2;
 
 /**
@@ -125,6 +126,26 @@ public class RotatableRectangle extends Shape {
 	public void drawImageNoBegin(Renderer r, Image i, Color c) {
 		drawImage(r,i,c,false,false);
 
+	}
+	
+	public void drawSubImage(Renderer r, Image i, Color c, float tx, float ty, float tWidth, float tHeight) {
+		i.bind();
+		Texture t = i.getTexture();
+		float s1 = tx / t.getWidth();
+		float t1 = ty / t.getHeight();
+		float s2 = (tx + tWidth) / t.getWidth();
+		float t2 = (ty + tHeight) / t.getHeight();
+		
+		float[] texCoords = {
+				s1, t1, // Tri1 Bottom-Left
+				s1, t2, // Tri1 Top-Left
+				s2, t2, // Tri1 Top-Right
+				s1, t1, // Tri2 Bottom-Left
+				s2, t2, // Tri2 Top-Right
+				s2, t1, // tri2 Bottom-Right
+		};
+		
+		r.drawRotatedRectangleWithTexCoords(this, texCoords, i.getZ(), c, false);
 	}
 
 	public void drawFilled(Renderer r) {
@@ -438,7 +459,7 @@ public class RotatableRectangle extends Shape {
 
 	@Override
 	public boolean contains(float x, float y) {
-		return intersects(new RotatableRectangle(x, y, 0, 0));
+		return intersects(new RotatableRectangle(x, y, 0f, 0f));
 	}
 
 	@Override

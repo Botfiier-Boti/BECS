@@ -279,14 +279,39 @@ public class SpriteBatch {
         					 1, 0};
 
 		drawQuad(bounds, texCoords, z, c);
-        /*
-		drawVertex(bl.x, bl.y, z, c, 0, 0);
-		drawVertex(tl.x, tl.y, z, c, 0, 1);
-		drawVertex(tr.x, tr.y, z, c, 1, 1);
 
-		drawVertex(bl.x, bl.y, z, c, 0, 0);
-		drawVertex(tr.x, tr.y, z, c, 1, 1);
-		drawVertex(br.x, br.y, z, c, 1, 0);*/
+		numInstances++;
+	}
+	
+	public void drawRotatedRectangle(RotatableRectangle rotRect, float[] texCoords, float z, Color c, boolean flipped) {
+		if (rotRect == null) {
+			return;
+		}
+		if (!ensureSpace(6)) {
+			r.drawRotatedRectangle(rotRect, c);
+			return;
+		}
+
+		Vector2f bl = rotRect.getBottomLeft();
+        Vector2f br = rotRect.getBottomRight();
+        Vector2f tl = rotRect.getTopLeft();
+        Vector2f tr = rotRect.getTopRight();
+
+        if (flipped) {
+            Vector2f temp = bl;
+            bl = br;
+            br = temp;
+            temp = tl;
+            tl = tr;
+            tr = temp;
+        }
+
+        float[] bounds = {bl.x, bl.y,
+        				  br.x, br.y,
+        				  tr.x, tr.y,
+        				  tl.x, tl.y};
+
+		drawQuad(bounds, texCoords, z, c);
 
 		numInstances++;
 	}
@@ -417,7 +442,7 @@ public class SpriteBatch {
 	 * @param resolution Resolution of the circle. The higher the number the better the quality at the cost of performance
 	 */
 	public void drawFilledCircle(float x, float y, float radius, Color c, int resolution) {
-		drawFilledCircle(x, y, 0, radius, c, resolution);
+		drawFilledCircle(x, y, 1, radius, c, resolution);
 	}
 
 	/**
@@ -431,9 +456,8 @@ public class SpriteBatch {
 	 * @param resolution Resolution of the circle. The higher the number the better the quality at the cost of performance
 	 */
 	public void drawFilledCircle(float x, float y, float z, float radius, Color c, int resolution) {
-		int adjRes = resolution * 3;
 
-		if (!ensureSpace(adjRes)) {
+		if (!ensureSpace(resolution)) {
 			SpriteBatch b = getRenderer().getFirstOpenBatch();
 			if (b.getVertices().remaining() <= 0) {
 				return;
@@ -443,17 +467,17 @@ public class SpriteBatch {
 		}
 
 		float currentAngle = 0;
-		float moveAngle = (float) (Math.PI / adjRes);
+		float moveAngle = (float) (2 * Math.PI / resolution);
 
 		float cosA, sinA, cosB, sinB;
 		float x1, y1, x2, y2;
 
-		for (int i = 0; i < resolution; i += 3) {
+		for (int i = 0; i < resolution; i ++) {
 			cosA = Math.cos(currentAngle);
 			sinA = Math.sin(currentAngle);
 
-			cosB = Math.cos(currentAngle + moveAngle * 6);
-			sinB = Math.sin(currentAngle + moveAngle * 6);
+			cosB = Math.cos(currentAngle + moveAngle);
+			sinB = Math.sin(currentAngle + moveAngle);
 
 			x1 = x + cosA * radius;
 			y1 = y + sinA * radius;
@@ -461,15 +485,12 @@ public class SpriteBatch {
 			x2 = x + cosB * radius;
 			y2 = y + sinB * radius;
 
-			drawVertex(x, y, z, c, 0.5f, 0.5f);
-			drawVertex(x1, y1, z, c, 0, 1);
-			drawVertex(x2, y2, z, c, 1, 1);
+			drawTri(x, y, x1, y1, x2, y2, 0.5f, 0.5f, 0f, 1f, 1f, 1f, z, c);
 
 			numInstances ++;
 
-	        currentAngle += moveAngle * 6;
+	        currentAngle += moveAngle;
 		}
-		numVertices += resolution;
 	}
 
 	/**
