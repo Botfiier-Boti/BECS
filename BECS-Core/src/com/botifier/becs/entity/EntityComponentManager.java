@@ -32,6 +32,9 @@ public class EntityComponentManager {
 	 */
 	private static final ConcurrentHashMap<Class<?>, Class<? extends EntityComponent<?>>> overrideMap = new ConcurrentHashMap<>();
 	
+	/**
+	 * Caches the compatibility of certain classes
+	 */
 	private static final ConcurrentHashMap<Class<?>, Set<Class<?>>> compatabilityCache = new ConcurrentHashMap<>();
 	
 	/**
@@ -251,6 +254,12 @@ public class EntityComponentManager {
 	}
 	
 	
+	/**
+	 * Checks if a class is compatible with another and caches that information if so.
+	 * @param expected Class<?> Class that actual should be compatible with
+	 * @param actual Class<?> Class to check
+	 * @return boolean Whether or not expected can be assigned actual
+	 */
 	private static boolean isCompatibleType(Class<?> expected, Class<?> actual) {
 		Set<Class<?>> compat = compatabilityCache
 				.computeIfAbsent(expected, type -> {

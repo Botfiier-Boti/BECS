@@ -45,6 +45,8 @@ public abstract class EntitySystem {
 
 	/**
 	 * Applies the system to array of entities
+	 * 
+	 * This method should check isPaused() if pausing is desired.
 	 * @param entities Entity[] Array to apply to
 	 */
 	public abstract void apply(Entity[] entities);
@@ -88,7 +90,7 @@ public abstract class EntitySystem {
 	}
 
 	/**
-	 * Returns the game that this system belongs to
+	 * Returns the game instance that this system belongs to
 	 * @return Game
 	 */
 	public Game getGame() {
@@ -96,8 +98,9 @@ public abstract class EntitySystem {
 	}
 	
 	/**
-	 * Should pause the system
-	 * Unless someone forgets to add pausing to apply
+	 * Pauses the system
+	 * 
+	 * The effects of pausing depends on the implementation of apply
 	 */
 	public void pause() {
 		paused = true;
