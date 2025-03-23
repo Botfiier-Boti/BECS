@@ -15,6 +15,11 @@ public class Sound {
 		s = new SoundSource(loop, relative);
 		s.setBuffer(b.getBufferId());
 	}
+	private Sound(SoundSource s, SoundBuffer sb) {
+		this.s = s;
+		this.sb = sb;
+		s.setBuffer(sb.getBufferId());
+	}
 
 	public void play() {
 		s.play();
@@ -47,7 +52,7 @@ public class Sound {
 	}
 
 	public Sound copy() {
-		return new Sound(sb, s.loop, s.relative);
+		return new Sound(s,sb);
 	}
 
 	public static Sound createSound(String file, boolean loop, boolean relative) {

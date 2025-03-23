@@ -68,7 +68,7 @@ public class ResourceManager {
 	}
 	
 	public static Sound getOrPutSound(String name, Function<? super String, ? extends Sound> consumer) {
-		return sounds.computeIfAbsent(name, consumer);
+		return sounds.computeIfAbsent(name.toLowerCase(), consumer);
 	}
 	
 	public static ShaderProgram putShaderProgram(String name, ShaderProgram sp) {
@@ -89,11 +89,11 @@ public class ResourceManager {
 	
 	
 	public static Shader loadOrGetShader(String name, int shaderType, String location) {
-		return shaders.computeIfAbsent(name, s -> Shader.loadShader(shaderType, location));
+		return shaders.computeIfAbsent(name.toLowerCase(), s -> Shader.loadShader(shaderType, location));
 	}
 	
 	public static Shader loadShader(String name, int shaderType, String location) {
-		return shaders.put(name, Shader.loadShader(shaderType, location));
+		return shaders.put(name.toLowerCase(), Shader.loadShader(shaderType, location));
 	}
 	
 	public static Shader putShader(String name, Shader s) {
@@ -121,6 +121,6 @@ public class ResourceManager {
 	}
 	
 	public static boolean hasSound(String name) {
-		return images.containsKey(name);
+		return images.containsKey(name.toLowerCase());
 	}
 }
