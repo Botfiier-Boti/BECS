@@ -15,20 +15,12 @@ import static org.lwjgl.opengl.GL11.glClearColor;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -62,16 +54,15 @@ import com.botifier.becs.config.IConfig;
 import com.botifier.becs.entity.Entity;
 import com.botifier.becs.entity.EntityComponentManager;
 import com.botifier.becs.entity.EntitySystem;
+import com.botifier.becs.events.KeyCharacterTypedEvent;
+import com.botifier.becs.events.listeners.WorldListener;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.sound.SoundListener;
 import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
-import com.botifier.becs.util.debugging.ExecutionTimer;
+import com.botifier.becs.util.events.EventManager;
 import com.botifier.becs.util.shapes.RotatableRectangle;
-import com.botifier.becs.util.events.*;
-import com.botifier.becs.events.KeyCharacterActionEvent;
-import com.botifier.becs.events.listeners.*;
 
 //Based on https://www.lwjgl.org/guide
 //Added a separate thread for game loop and render. like in https://github.com/LWJGL/lwjgl3-demos/blob/main/src/org/lwjgl/demo/opengl/glfw/Multithreaded.java
@@ -111,6 +102,11 @@ public abstract class Game {
 	 * Renderer
 	 */
 	private AtomicReference<Renderer> renderer = new AtomicReference<Renderer>();
+	
+	/**
+	 * Whether or not framerate should be maximized
+	 */
+	private final static AtomicInteger frameSleepNs = new AtomicInteger(0);
 
 	/**
 	 * Sound manager
@@ -412,7 +408,7 @@ public abstract class Game {
 					input.setLastCharCode(charCode);
 				}
 				if (eventManager != null)
-					eventManager.executeEvent(new KeyCharacterActionEvent(charCode), "CharCallback");
+					eventManager.executeEvent(new KeyCharacterTypedEvent(charCode), "CharCallback");
 			}
 
 		});
@@ -483,8 +479,8 @@ public abstract class Game {
 		t.start();
 
 		while (running.get()) {
-			GLFW.glfwWaitEventsTimeout(0.01);
-			Thread.yield();
+			GLFW.glfwWaitEventsTimeout(1);
+
 		}
 		
 		update.cancel(true);
@@ -737,7 +733,23 @@ public abstract class Game {
 	 */
 	public static void setDebug(boolean debug) {
 		Game.debug.set(debug);
-		;
+	}
+	
+	/**
+	 * Sets the delay in nanoseconds between frames
+	 * 
+	 * @param delay
+	 */
+	public static void setFrameDelayNs(int delay) {
+		frameSleepNs.set(delay);
+	}
+	
+	/**
+	 * Gets the delay in nanoseconds between frames
+	 * @return int The delay
+	 */
+	public static int getFrameDelayNs() {
+		return frameSleepNs.get();
 	}
 
 	/**
@@ -997,6 +1009,7 @@ public abstract class Game {
 			} finally {
 				ticksAlive.incrementAndGet(); // Add to the tick tracker	
 			}
+			Thread.onSpinWait();
 		}
 		
 		private void tick() {
@@ -1008,6 +1021,7 @@ public abstract class Game {
 			}
 			
 			t.updateUPS(); // Updates UPS counter (Updates Per Second)
+			
 		}
 	}
 
@@ -1038,12 +1052,13 @@ public abstract class Game {
 				} else {
 					render();
 				}
-				
+				Thread.sleep(0, frameSleepNs.get());
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
 				if (getRenderer().hasRendered()) {
 					glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
+					Thread.onSpinWait();
 				}
 				getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
 													// Draws happened on this frame
