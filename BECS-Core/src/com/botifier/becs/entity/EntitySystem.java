@@ -2,7 +2,6 @@ package com.botifier.becs.entity;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.botifier.becs.Game;
 

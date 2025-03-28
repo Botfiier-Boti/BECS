@@ -94,12 +94,6 @@ public class HelloWorld extends Game{
 		i2.setScale(0.5f);
 		//i2.setShaderProgram(sp);
 		i3 = new Image("WhitePixel.png");
-		
-		try {
-			i2.getTexture().write(new File("froggy.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 
 
 		Sound so = Sound.createSound("sounds/alien_crow.wav", false, true);
@@ -114,6 +108,7 @@ public class HelloWorld extends Game{
 			Entity e2 = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-600, -200+localI*i2.getHeight(), i2.getWidth(), i2.getHeight());
 					e.setShape(rr);
@@ -146,6 +141,7 @@ public class HelloWorld extends Game{
 			Entity e2 = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-600, -600+localI*i2.getHeight()-1000, i2.getWidth(), i2.getHeight());
 					e.setShape(rr);
@@ -165,6 +161,7 @@ public class HelloWorld extends Game{
 			wew = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					float angle = (float) Math.toRadians(22.5f);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-400+((float)Math.cos(angle))*localI*i2.getWidth(), -400+((float)Math.sin(angle))*localI*i2.getHeight(), i2.getWidth(), i2.getHeight());
@@ -187,6 +184,7 @@ public class HelloWorld extends Game{
 			Entity e2 = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					Image e = new Image(i2);
 					e.setScale(0.2f);
 					RotatableRectangle rr =  new RotatableRectangle(-800+localI*-e.getWidth(), -400, e.getWidth(), e.getHeight());
@@ -210,7 +208,7 @@ public class HelloWorld extends Game{
 		addSystem(ps);
 		addSystem(new ArrowKeyControlsSystem(this));
 		
-
+		this.setBatchAutoDraw(true);
 
 		rotRect = new RotatableRectangle(400, 400, 128, 128, (float) (Math.PI*0));
 		rotRect2 = new RotatableRectangle(getWidth(), 0, 1600, 4);
