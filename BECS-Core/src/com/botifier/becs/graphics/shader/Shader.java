@@ -13,6 +13,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
+import assets.AssetLoader;
 /*
  * The MIT License (MIT)
  *
@@ -80,7 +82,7 @@ public class Shader {
 	public static Shader loadShader(int type, String path) {
 		StringBuilder b = new StringBuilder();
 		ClassLoader cl = Shader.class.getClassLoader();
-		try (InputStream in = cl.getResourceAsStream(path)) {
+		try (InputStream in = AssetLoader.loadAsset(path)) {
 			BufferedReader r = new BufferedReader(new InputStreamReader(in));
 
 			String line;

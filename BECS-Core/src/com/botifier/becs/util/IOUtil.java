@@ -21,6 +21,8 @@ import java.nio.file.Paths;
 
 import org.lwjgl.BufferUtils;
 
+import assets.AssetLoader;
+
 /**
  * IOUtil
  * 
@@ -63,7 +65,7 @@ public final class IOUtil {
             }
         } else {
             try (
-                InputStream source = IOUtil.class.getClassLoader().getResourceAsStream(resource);
+                InputStream source = AssetLoader.loadAsset(resource);
                 ReadableByteChannel rbc = Channels.newChannel(source)
             ) {
                 buffer = createByteBuffer(bufferSize);

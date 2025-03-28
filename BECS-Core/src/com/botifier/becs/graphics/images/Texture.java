@@ -68,6 +68,8 @@ import org.lwjgl.system.MemoryUtil;
 
 import com.botifier.becs.Game;
 
+import assets.AssetLoader;
+
 public class Texture {
 
 	/**
@@ -388,7 +390,7 @@ public class Texture {
 		ClassLoader cl = Image.class.getClassLoader();
 		Texture t = null;
 		try {
-			t = loadTexture(ImageIO.read(cl.getResourceAsStream(path)), path);
+			t = loadTexture(ImageIO.read(AssetLoader.loadAsset(path)), path);
 			t.location = path;
 		} catch (IOException e) {
 			e.printStackTrace();
