@@ -5,7 +5,6 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.util.Objects;
-import java.util.UUID;
 
 import org.joml.Vector2f;
 

@@ -24,7 +24,6 @@ import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
 import java.awt.Color;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;

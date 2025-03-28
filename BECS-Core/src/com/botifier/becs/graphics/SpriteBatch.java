@@ -1,7 +1,6 @@
 package com.botifier.becs.graphics;
 
 import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15.GL_READ_WRITE;
 import static org.lwjgl.opengl.GL15.glMapBuffer;
 
 import java.awt.Color;
@@ -10,8 +9,6 @@ import java.nio.ByteBuffer;
 import org.joml.Math;
 import org.joml.Vector2f;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL43;
-import org.lwjgl.opengl.GL44;
 
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.Math2;

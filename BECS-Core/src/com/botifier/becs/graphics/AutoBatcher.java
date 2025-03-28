@@ -1,7 +1,6 @@
 package com.botifier.becs.graphics;
 
 import java.awt.Color;
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 

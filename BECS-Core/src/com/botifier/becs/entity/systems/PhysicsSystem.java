@@ -2,15 +2,11 @@ package com.botifier.becs.entity.systems;
 
 import static com.botifier.becs.entity.EntityComponentManager.hasComponent;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -31,7 +27,6 @@ import com.botifier.becs.util.Math2;
 import com.botifier.becs.util.ParameterizedRunnable;
 import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.SpatialPolygonHolder;
-import com.botifier.becs.util.debugging.ExecutionTimer;
 import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 import com.botifier.becs.util.shapes.Shape;
