@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.joml.Vector2L;
 import org.joml.Vector2f;
 
 import com.botifier.becs.entity.Entity;
@@ -35,7 +36,7 @@ import com.botifier.becs.util.shapes.Shape;
  */
 public class SpatialEntityMap {
 	private int cellSize;
-	private final Map<Vector2f, Set<Entity>> grid;
+	private final Map<Vector2L, Set<Entity>> grid;
 	private final Map<UUID, SpatialPolygonHolder> entityLocations;
 	private final Map<UUID, SpatialPolygonHolder> sleepingEntities;
 
@@ -50,7 +51,7 @@ public class SpatialEntityMap {
 		this.sleepingEntities = new ConcurrentHashMap<>();
 	}
 
-	private SpatialEntityMap(SpatialEntityMap origin, Set<Vector2f> hashesToCopy) {
+	private SpatialEntityMap(SpatialEntityMap origin, Set<Vector2L> hashesToCopy) {
 		this(origin.cellSize);
 
 		hashesToCopy.parallelStream().forEach(hash -> {
@@ -67,7 +68,7 @@ public class SpatialEntityMap {
 	    });
 	}
 
-	private SpatialEntityMap(int cellSize, Map<Vector2f, Set<Entity>> grid, Map<UUID, SpatialPolygonHolder> ent) {
+	private SpatialEntityMap(int cellSize, Map<Vector2L, Set<Entity>> grid, Map<UUID, SpatialPolygonHolder> ent) {
 		this(cellSize);
 
 		grid.entrySet().parallelStream().forEach(e -> {
@@ -87,7 +88,7 @@ public class SpatialEntityMap {
 		});
 	}
 
-	private SpatialEntityMap(int cellSize, Map<Vector2f, Set<Entity>> grid, Map<UUID, SpatialPolygonHolder> ent, Set<Vector2f> hashesToCopy) {
+	private SpatialEntityMap(int cellSize, Map<Vector2L, Set<Entity>> grid, Map<UUID, SpatialPolygonHolder> ent, Set<Vector2L> hashesToCopy) {
 		this(cellSize);
 
 		hashesToCopy.forEach(h -> {
@@ -117,7 +118,7 @@ public class SpatialEntityMap {
 	 * @param y float To use
 	 * @return Vector2f Chunk location
 	 */
-	public Vector2f getLocation(float x, float y) {
+	public Vector2L getLocation(float x, float y) {
 		return getLocation(x, y, getCellSize());
 	}
 
@@ -143,7 +144,7 @@ public class SpatialEntityMap {
 		Polygon poly = s.get().toPolygon();
 		SpatialPolygonHolder sph = new SpatialPolygonHolder(e, poly, getCellSize());
 
-		for (Vector2f key : sph.getHashes()) {
+		for (Vector2L key : sph.getHashes()) {
 			grid.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet(16)).add(e);
 		}
 		
@@ -169,7 +170,7 @@ public class SpatialEntityMap {
 		if (sph == null) {
 			return 0;
 		}
-		for (Vector2f key : sph.getHashes()) {
+		for (Vector2L key : sph.getHashes()) {
 			Set<Entity> l = grid.get(key);
 			if (l != null) {
 				l.remove(e);
@@ -270,7 +271,7 @@ public class SpatialEntityMap {
 		SpatialPolygonHolder sph = new SpatialPolygonHolder(e, poly, getCellSize());
 		SpatialPolygonHolder old = locate(e);
 
-		Set<Vector2f> safeHashes = new HashSet<>();
+		Set<Vector2L> safeHashes = new HashSet<>();
 
 
 		sph.getHashes().parallelStream().forEach(key -> {
@@ -316,7 +317,7 @@ public class SpatialEntityMap {
 	 * Returns the map of chunks
 	 * @return Map\<Vector2f, List\<Entity\>\> map of chunks
 	 */
-	public Map<Vector2f, Set<Entity>> getGrid() {
+	public Map<Vector2L, Set<Entity>> getGrid() {
 		return grid;
 	}
 
@@ -327,7 +328,7 @@ public class SpatialEntityMap {
 	 * @return List\<Entity\> entities in the related chunk
 	 */
 	public Set<Entity> getEntitiesNear(float x, float y) {
-		Vector2f location = getLocation(x, y);
+		Vector2L location = getLocation(x, y);
 		return grid.getOrDefault(location, ConcurrentHashMap.newKeySet(16));
 	}
 
@@ -340,8 +341,8 @@ public class SpatialEntityMap {
 		return getEntitiesIn(p, false);
 	}
 
-	public Set<Entity> getEntitiesIn(Polygon p, boolean collide, Set<Vector2f> outputHashes) {
-		Set<Vector2f> validHashes = outputHashes;
+	public Set<Entity> getEntitiesIn(Polygon p, boolean collide, Set<Vector2L> outputHashes) {
+		Set<Vector2L> validHashes = outputHashes;
 
 		if (outputHashes == null) {
 			validHashes = gridifyPolygon(p).getHashes();
@@ -442,11 +443,11 @@ public class SpatialEntityMap {
 	 * @param cellSize int Cell size to use
 	 * @return Vector2f scaled based on cellSize
 	 */
-	public static Vector2f getLocation(float x, float y, int cellSize) {
+	public static Vector2L getLocation(float x, float y, int cellSize) {
 		long cX = Math.floorDiv((long)x, cellSize);
 		long cY = Math.floorDiv((long)y, cellSize);
 
-		return new Vector2f(cX, cY);
+		return new Vector2L(cX, cY);
 	}
 
 	public int getCellSize() {
@@ -461,13 +462,13 @@ public class SpatialEntityMap {
 	}
 
 	public SpatialEntityMap falseClone(Polygon area) {
-		Set<Vector2f> validHashes = gridifyPolygon(area).getHashes();
+		Set<Vector2L> validHashes = gridifyPolygon(area).getHashes();
 		SpatialEntityMap sem = new SpatialEntityMap(this.cellSize, this.grid, this.entityLocations, validHashes);
 		return sem;
 	}
 
 	public SpatialEntityMap miniCopy(Polygon area) {
-		Set<Vector2f> validHashes = gridifyPolygon(area).getHashes();
+		Set<Vector2L> validHashes = gridifyPolygon(area).getHashes();
 		SpatialEntityMap sem = new SpatialEntityMap(this, validHashes);
 		return sem;
 	}

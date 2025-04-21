@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 import org.joml.Intersectionf;
+import org.joml.Vector2L;
 import org.joml.Vector2f;
 
 import com.botifier.becs.entity.Entity;
@@ -33,7 +34,7 @@ public class SpatialPolygonHolder implements Cloneable {
 	/**
 	 * A concurrent safe set
 	 */
-	Set<Vector2f> hashes;
+	Set<Vector2L> hashes;
 
 	/**
 	 * SpatialPolygon constructor
@@ -45,7 +46,7 @@ public class SpatialPolygonHolder implements Cloneable {
 		this(owner, gridifyPolygon(p, cellSize), cellSize);
 	}
 
-	private SpatialPolygonHolder(Entity owner, Set<Vector2f> hashes, int cellSize) {
+	private SpatialPolygonHolder(Entity owner, Set<Vector2L> hashes, int cellSize) {
 		this.owner = owner;
 		this.cellSize = cellSize;
 		this.hashes = hashes;
@@ -56,8 +57,8 @@ public class SpatialPolygonHolder implements Cloneable {
 	 * @param p Polygon to rasterize
 	 * @return Set/<Vector2f/> The rasterized points
 	 */
-	private static Set<Vector2f> gridifyPolygon(Polygon p, int cellSize) {
-		Set<Vector2f> validHashes = null;
+	private static Set<Vector2L> gridifyPolygon(Polygon p, int cellSize) {
+		Set<Vector2L> validHashes = null;
 
 		RotatableRectangle rr = p.getBoundingBox();
 
@@ -67,7 +68,7 @@ public class SpatialPolygonHolder implements Cloneable {
 		final long minY = Math.floorDiv((long) rr.getMinY(), cellSize)-1;
 
 		validHashes = LongStream.rangeClosed(minY, maxY).parallel().mapToObj(y -> {
-			Set<Vector2f> validXHashes = new HashSet<>();
+			Set<Vector2L> validXHashes = new HashSet<>();
 			for (long x = minX; x <= maxX; x++) {
 
 				float cellMinX = x * cellSize - cellSize/2;
@@ -100,7 +101,16 @@ public class SpatialPolygonHolder implements Cloneable {
 	 * @param match Set/<Vector2f/> Of points
 	 * @return boolean Whether or not they match
 	 */
-	public boolean matches(Set<Vector2f> match) {
+	public boolean matchesF(Set<Vector2f> match) {
+		return matches(match.stream().map(v -> new Vector2L((long)v.x, (long)v.y)).collect(Collectors.toSet()));
+	}
+	
+	/**
+	 * Check if the rasterization matches
+	 * @param match Set/<Vector2L/> Of points
+	 * @return boolean Whether or not they match
+	 */
+	public boolean matches(Set<Vector2L> match) {
 		return hashes.equals(match);
 	}
 
@@ -108,7 +118,7 @@ public class SpatialPolygonHolder implements Cloneable {
 	 * Returns the rasterized locations
 	 * @return Set/<Vector2f/> The locations
 	 */
-	public Set<Vector2f> getHashes() {
+	public Set<Vector2L> getHashes() {
 		return hashes;
 	}
 
