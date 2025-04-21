@@ -53,7 +53,7 @@ public class Math2 {
 	 * @return Vector2f the point between
 	 */
 	public static Vector2f getMidpoint(Vector2f v, Vector2f v2) {
-		return new Vector2f( (v.x + v2.x) / 2 , (v.y + v2.y) / 2 );
+		return getMidpoint(v.x, v.y, v2.x, v2.y);
 	}
 
 	/**
@@ -598,13 +598,5 @@ public class Math2 {
 		}
 
 		return collides;
-	}
-	
-	/**
-	 * Checks whether or not a Vector2f is NaN or Infinite
-	 * @return boolean If the vector contains a NaN or an Infinite value
-	 */
-	public static boolean isNanOrInfinite(Vector2f v) {
-		return !Float.isFinite(v.x) || !Float.isFinite(v.y);
 	}
 }

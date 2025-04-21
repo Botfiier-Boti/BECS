@@ -202,7 +202,7 @@ public class Camera {
 	public void setCenter(Vector2f center) {
 		if (center == null)
 			throw new IllegalArgumentException("Center cannot be null");
-		if (Math2.isNanOrInfinite(center))
+		if (!center.isFinite())
 			throw new IllegalArgumentException("Center cannot be either NaN or Infinite");
 		this.changed = true;
 		this.camera.setCenter(center);
