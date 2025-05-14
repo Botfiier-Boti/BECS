@@ -94,9 +94,6 @@ class PolygonTest {
 				assertVector2fArrayEquals(moved.getPoints(), movedPoints, EPSILON);
 			}
 		}
-		
-		
-		
 	}
 
 	@Test
@@ -108,8 +105,10 @@ class PolygonTest {
 		Polygon p1 = Polygon.createPolygon(points1);
 		p1 = p1.scale(2);
 		
-		assertArrayEquals(points2, p1.getPoints());
+		assertVector2fArrayEquals(points2, p1.getPoints(), EPSILON);
 		assertEquals(p1.getCenter(), Math2.calcCenteroid(points2));
 	}
+	
+	
 
 }
