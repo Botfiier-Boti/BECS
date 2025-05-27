@@ -62,7 +62,9 @@ public class EventManager {
 			}
 			
 			controllerClasses.putAll(tempConClasses);
-			listeners.putAll(tempListeners);
+			for (Class<? extends Event> key : tempListeners.keySet()) {
+				listeners.computeIfAbsent(key, k -> new CopyOnWriteArrayList<EventController>()).addAll(tempListeners.get(key));
+			}
 			listenerOwners.computeIfAbsent(listener.getOwner(), k -> new CopyOnWriteArrayList<EventListener>()).add(listener);
 		} else {
 			return false;
