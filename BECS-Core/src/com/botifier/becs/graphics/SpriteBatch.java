@@ -9,6 +9,8 @@ import java.nio.ByteBuffer;
 import org.joml.Math;
 import org.joml.Vector2f;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GL44;
 
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.Math2;
@@ -91,9 +93,11 @@ public class SpriteBatch {
 	public void begin() {
 		if (!drawing) {
 			//Maps the assigned portion of the render buffer to this
-			vertices = glMapBuffer(GL_ARRAY_BUFFER, GL15.GL_WRITE_ONLY,
+
+			vertices = glMapBuffer(GL_ARRAY_BUFFER, GL43.GL_WRITE_ONLY | GL43.GL_MAP_UNSYNCHRONIZED_BIT, 
 					r.getVertices().capacity() / r.getNumBatches(),
 					r.getVertices());
+			
 		    drawing = true;
 		}
 	}
