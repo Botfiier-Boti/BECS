@@ -42,4 +42,4 @@ replay_pid*
 **/.idea
 
 **/natives
-**/licenses
+/bin/
