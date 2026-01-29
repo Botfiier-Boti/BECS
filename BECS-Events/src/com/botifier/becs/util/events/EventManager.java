@@ -10,16 +10,26 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.concurrent.*;
 
 import com.botifier.becs.util.annotations.EventHandler;
 
 public class EventManager {
-	ConcurrentHashMap<Class<? extends Event>, List<EventController>> listeners = new ConcurrentHashMap<>();
-	ConcurrentHashMap<EventController, Class<? extends Event>> controllerClasses = new ConcurrentHashMap<>();
-	ConcurrentHashMap<UUID, List<EventListener>> listenerOwners = new ConcurrentHashMap<>();
+	
+	private Executor executor = ForkJoinPool.commonPool();
+	
+	private ConcurrentHashMap<Class<? extends Event>, List<EventController>> listeners = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<EventController, Class<? extends Event>> controllerClasses = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<UUID, List<EventListener>> listenerOwners = new ConcurrentHashMap<>();
 
+	/**
+	 * Registers an EventListener on this manager
+	 * @param listener EventListener To register
+	 * @return boolean Whether or not the registration succeeded
+	 */
 	public boolean registerListener(EventListener listener)  {
 		Class<?> cls = listener.getClass();
 		Method[] methods = cls.getDeclaredMethods();
@@ -72,6 +82,10 @@ public class EventManager {
 		return true;
 	}
 
+	/**
+	 * Unregisters an EventListener from this manager
+	 * @param listener EventListener To unregister
+	 */
 	public void unregisterListener(EventListener listener) {
 		List<EventController> ec = listener.getEventControllers();
 		if (ec == null) {
@@ -98,11 +112,31 @@ public class EventManager {
 			}
 		}
 	}
-
+	/**
+	 * Executes an event with no particular target
+	 * 
+	 * The effectiveness of priority ordering depends on pool size.
+	 * Single-threaded: Full priority ordering
+	 * Small pools: Some ordering
+	 * Large pools: High parallelism, low impact
+	 * 
+	 * @param e Event To use
+	 */
 	public void executeEvent(Event e) {
 		executeEvent(e, null);
 	}
 	
+	/**
+	 * Executes an event with no particular target
+	 * 
+	 * The effectiveness of priority ordering depends on pool size.
+	 * Single-threaded: Full priority ordering
+	 * Small pools: Some ordering
+	 * Large pools: High parallelism, low impact
+	 * 
+	 * @param e Event To use
+	 * @param origin String Origin of the event, for filtering
+	 */
 	public void executeEvent(Event e, String origin) {
 		List<EventController> ecs = listeners.get(e.getClass());
 		if (ecs != null) {
@@ -110,19 +144,42 @@ public class EventManager {
 		}
 	}
 	
+	/**
+	 * Executes an event on the specified UUIDs and the global listener
+	 * 
+	 * The effectiveness of priority ordering depends on pool size.
+	 * Single-threaded: Full priority ordering
+	 * Small pools: Some ordering
+	 * Large pools: High parallelism, low impact
+	 * 
+	 * @param e Event To use
+	 * @param origin String Origin of the event, for filtering
+	 * @param uuids UUID... UUIDs to execute on
+	 */
 	public void executeEventOn(Event e, String origin, UUID... uuids) {
 		executeEventOn(e, origin, true, uuids);
 	}
 	
+	/**
+	 * Executes an event on the specified UUIDs
+	 * 
+	 * The effectiveness of priority ordering depends on pool size.
+	 * Single-threaded: Full priority ordering
+	 * Small pools: Some ordering
+	 * Large pools: High parallelism, low impact
+	 * 
+	 * @param e Event To use
+	 * @param origin String Origin of the event, for filtering
+	 * @param global boolean Whether or not the event should be run on the global listener
+	 * @param uuids UUID... UUIDs to execute on
+	 */
 	public void executeEventOn(Event e, String origin, boolean global, UUID... uuids) {
 		if (uuids == null || 
 			uuids.length == 0 || 
 			(uuids.length == 1 && uuids[0] == null)) {
 			executeEvent(e, origin);
+			return;
 		}
-		
-		if (uuids == null)
-			uuids = new UUID[0];
 		
 		for (UUID uuid : uuids) {
 			if (uuid == null)
@@ -160,12 +217,35 @@ public class EventManager {
 							e1.printStackTrace();
 						}
 					}
-				}))
+				}, executor))
 				.collect(Collectors.toList());
 		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 		allOf.join();
 	}
 
+	/**
+	 * Completely unregisters all data associated with the specific UUID
+	 * @param u UUID to unregister
+	 * @return boolean Whether or not something was unregistered
+	 */
+	public boolean unregisterUUID(UUID u) {
+		List<EventListener> listeners = listenerOwners.getOrDefault(u, new ArrayList<EventListener>());
+		
+		if (listeners.size() != 0) {
+			for (EventListener l : listeners) {
+				unregisterListener(l);
+			}
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Check the listener is handling the specified event type
+	 * @param clazz Class\<? extends Event\> Event type to check for
+	 * @param listener EventListener Listener to check
+	 * @return boolean Whether or not the event type is handled
+	 */
 	public boolean checkHandled(Class<? extends Event> clazz, EventListener listener) {
 		List<EventController> li = listeners.get(clazz);
 		if (li == null) {
@@ -173,15 +253,51 @@ public class EventManager {
 		}
 		return li.stream().anyMatch(e -> e.getListener().equals(listener));
 	}
+	
+	/**
+	 * Sets the Executor for this manager
+	 * @param ex Executor To use
+	 * @return this
+	 */
+	public EventManager setExecutor(Executor ex) {
+		if (ex == null)
+			this.executor = ForkJoinPool.commonPool();
+		else
+			this.executor = ex;
+		return this;
+	}
+	
+	/**
+	 * Returns the current Executor
+	 * @return Executor The current executor
+	 */
+	public Executor getExecutor() {
+		return this.executor;
+	}
 
+	/**
+	 * Returns all of the EventControllers in the specified listener
+	 * @param listener EventListener Listener to check
+	 * @return List\<EventController\> The controllers in the listener
+	 */
 	public List<EventController> getControllers(EventListener listener) {
 		return listener.getEventControllers();
 	}
 
+	/**
+	 * Get the type of event that a EventController is handling
+	 * @param ec EventController To check
+	 * @return Class\<? extends Event\> Event type handled  
+	 */
 	public Class<? extends Event> getEventType(EventController ec) {
-		return controllerClasses.getOrDefault(ec, null);
+		return this.controllerClasses.getOrDefault(ec, null);
 	}
 
+	/**
+	 * Gets all of the event types handled by an EventListener
+	 * @param listener EventListener To check
+	 * @return List\<Class\<? extends Event\>\> The handled event types
+	 */
 	public List<Class<? extends Event>> getHandled(EventListener listener) {
 		List<EventController> li = listener.getEventControllers();
 		if (li == null || li.size() == 0) {

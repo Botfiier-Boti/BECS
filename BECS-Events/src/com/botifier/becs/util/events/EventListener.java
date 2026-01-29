@@ -33,22 +33,22 @@ public abstract class EventListener {
 		this.selfUUID = uuid;
 	}
 	
-	protected void setEventControllers(Map<Class<?>, List<EventController>> ec) {
+	protected final void setEventControllers(Map<Class<?>, List<EventController>> ec) {
 		controllers = ec; 
 	}
 	
-	public void register(EventManager em) {
-		if (!this.em.equals(em))
+	public final void register(EventManager em) {
+		if (em != null && !this.em.equals(em))
 			unregister();
 		this.em = em;
 		this.em.registerListener(this);
 	}
 	
-	public void unregister() {
+	public final void unregister() {
 		this.em.unregisterListener(this);
 	}
 	
-	public UUID getOwner() {
+	public final UUID getOwner() {
 		return this.owner;
 	}
 	
