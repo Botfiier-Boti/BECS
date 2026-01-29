@@ -153,6 +153,8 @@ public class Math2 {
 	 * @return Vector2f Resulting point
 	 */
 	public static Vector2f rotatePoint(Vector2f point, float angle) {
+		if (angle == 0)
+			return point;
 		Vector2f newPoint = new Vector2f();
 
 		float mx = (Math.cos(angle));
@@ -180,10 +182,10 @@ public class Math2 {
 
 	//TODO: find a way to do this with different outputs without copy/pasting
 	public static float greatestNumber(float x, float y) {
-		return x > y ? x : y > x ? y : x;
+		return x > y ? x : x;
 	}
 	public static float lowestNumber(float x, float y) {
-		return x > y ? y : y > x ? x : x;
+		return x > y ? y : x;
 	}
 
 	public static boolean greaterThan(float x, float y) {
