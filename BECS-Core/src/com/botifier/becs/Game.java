@@ -16,9 +16,11 @@ import static org.lwjgl.opengl.GL11.glClearColor;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.sound.sampled.AudioInputStream;
@@ -106,7 +109,7 @@ public abstract class Game {
 	/**
 	 * Whether or not framerate should be maximized
 	 */
-	private final static AtomicInteger frameSleepNs = new AtomicInteger(0);
+	private final static AtomicLong frameSleepNs = new AtomicLong(0);
 
 	/**
 	 * Sound manager
@@ -748,7 +751,7 @@ public abstract class Game {
 	 * Gets the delay in nanoseconds between frames
 	 * @return int The delay
 	 */
-	public static int getFrameDelayNs() {
+	public static long getFrameDelayNs() {
 		return frameSleepNs.get();
 	}
 
@@ -994,7 +997,7 @@ public abstract class Game {
 			delta.set(t.getDelta()); // set delta
 			accumulator += delta.get();
 			try {
-				if (!noLock && lock.tryLock(5, TimeUnit.MILLISECONDS)) {
+				if (!noLock && lock.tryLock(100, TimeUnit.MILLISECONDS)) {
 					try {
 						tick();
 					} finally {
@@ -1004,12 +1007,13 @@ public abstract class Game {
 					tick();
 			} catch (InterruptedException ie) {
 				//Don't really care if the lock is interrupted
+				if (debug.get())
+					ie.printStackTrace();
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {
-				ticksAlive.incrementAndGet(); // Add to the tick tracker	
+				ticksAlive.incrementAndGet(); // Add to the tick tracker
 			}
-			Thread.onSpinWait();
 		}
 		
 		private void tick() {
@@ -1017,7 +1021,8 @@ public abstract class Game {
 			
 			for (EntitySystem system : systems) {
 				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); // Obtains all valid entities
-				system.apply(entities); // Applies the system to all of those entities
+				
+				system.apply(entities).join(); // Applies the system to all of those entities and waits for futures to complete
 			}
 			
 			t.updateUPS(); // Updates UPS counter (Updates Per Second)
@@ -1043,7 +1048,7 @@ public abstract class Game {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
 
 			try {
-				if (!noLock && lock.tryLock(5, TimeUnit.MILLISECONDS)) {
+				if (!noLock && lock.tryLock(100, TimeUnit.MILLISECONDS)) {
 					try {
 						render();
 					} finally {
@@ -1052,19 +1057,19 @@ public abstract class Game {
 				} else {
 					render();
 				}
-				Thread.sleep(0, frameSleepNs.get());
-			} catch (Exception e) {
+			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} finally {
 				if (getRenderer().hasRendered()) {
 					glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
-					Thread.onSpinWait();
 				}
 				getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
 													// Draws happened on this frame
 				t.updateFPS(); // Updates the FPS counter
+
+				LockSupport.parkNanos(getFrameDelayNs());
 			}
-			Thread.yield();
+			//Thread.yield();
 		}
 
 		private void render() {
