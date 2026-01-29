@@ -5,6 +5,7 @@ import static org.lwjgl.opengl.GL15.glMapBuffer;
 
 import java.awt.Color;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 import org.joml.Math;
 import org.joml.Vector2f;
@@ -45,6 +46,11 @@ public class SpriteBatch {
 	 * The vertex buffer
 	 */
 	private ByteBuffer vertices;
+	
+	/**
+	 * Cache the overall buffer
+	 */
+	private ByteBuffer vertexBuffer;
 
 	/**
 	 * If the batch is currently drawing
@@ -82,9 +88,9 @@ public class SpriteBatch {
 	 *
 	 * all this does is grab the vertices buffer from the Renderer if it is null
 	 */
-	private void init() {
+	protected void init() {
 		if (vertices == null) {
-			vertices = r.getVertices();
+			vertexBuffer = vertices = r.getVertices();
 		}
 	}
 	/**
@@ -93,11 +99,15 @@ public class SpriteBatch {
 	public void begin() {
 		if (!drawing) {
 			//Maps the assigned portion of the render buffer to this
-
+			/*
+			vertices = GL43.glMapBufferRange(GL_ARRAY_BUFFER, 
+											0,
+											vertexBuffer.capacity() / r.getNumBatches(),
+								   		    GL43.GL_WRITE_ONLY
+								   		    ,vertexBuffer);*/
 			vertices = glMapBuffer(GL_ARRAY_BUFFER, GL43.GL_WRITE_ONLY | GL43.GL_MAP_UNSYNCHRONIZED_BIT, 
 					r.getVertices().capacity() / r.getNumBatches(),
 					r.getVertices());
-			
 		    drawing = true;
 		}
 	}
@@ -200,7 +210,11 @@ public class SpriteBatch {
 	 */
 	public void drawTextureRegion(float x1, float y1, float x2, float y2, float z, float s1, float t1, float s2, float t2, Color c) {
 		if (!ensureSpace(6)) {
-			r.drawTextureRegion(x1, y1, x2, y2, z, s1, t1, s2, t2, c);
+			SpriteBatch sb = r.getFirstOpenBatch(6);
+			
+			if (sb != null && sb != this) {
+				//sb.drawTextureRegion(x1, y1, x2, y2, z, s1, t1, s2, t2, c);
+			}
 			return;
 		}
 
@@ -248,10 +262,15 @@ public class SpriteBatch {
 		if (rotRect == null) {
 			return;
 		}
+		/*
 		if (!ensureSpace(6)) {
-			r.drawRotatedRectangle(rotRect, c);
+			SpriteBatch sb = r.getFirstOpenBatch(6);
+			
+			if (sb != null && sb != this) {
+				sb.drawRotatedRectangle(rotRect, z, c, flipped);
+			}
 			return;
-		}
+		}*/
 
 		Vector2f bl = rotRect.getBottomLeft();
         Vector2f br = rotRect.getBottomRight();
@@ -289,7 +308,11 @@ public class SpriteBatch {
 			return;
 		}
 		if (!ensureSpace(6)) {
-			r.drawRotatedRectangle(rotRect, c);
+			SpriteBatch sb = r.getFirstOpenBatch(6);
+			
+			if (sb != null && sb != this) {
+				sb.drawRotatedRectangle(rotRect, texCoords, z, c, flipped);
+			}
 			return;
 		}
 
@@ -407,10 +430,13 @@ public class SpriteBatch {
 	 */
 	public void drawLine(float x, float y, float xx, float yx, float z, Color c, float width) {
 		if (!ensureSpace(6)) {
-			r.drawLine(x, y, xx, yx, c, width);
+			SpriteBatch sb = r.getFirstOpenBatch(6);
+			
+			if (sb != null && sb != this) {
+				sb.drawLine(x, y, xx, yx, c, width);
+			}
 			return;
 		}
-
 		float angle = Math2.calcAngle(x, y, xx, yx);
 		float dist = new Vector2f(x, y).distance(xx, yx);
 
@@ -457,13 +483,12 @@ public class SpriteBatch {
 	 * @param resolution Resolution of the circle. The higher the number the better the quality at the cost of performance
 	 */
 	public void drawFilledCircle(float x, float y, float z, float radius, Color c, int resolution) {
-
 		if (!ensureSpace(resolution)) {
-			SpriteBatch b = getRenderer().getFirstOpenBatch();
-			if (b.getVertices().remaining() <= 0) {
-				return;
+			SpriteBatch sb = r.getFirstOpenBatch(resolution);
+			
+			if (sb != null && sb != this) {
+				sb.drawFilledCircle(x, y, z, radius, c, resolution);
 			}
-			b.drawFilledCircle(x, y, z, radius, c, resolution);
 			return;
 		}
 
@@ -521,12 +546,12 @@ public class SpriteBatch {
 		if (vertices == null) {
 			return;
 		}
-		if (vertices.remaining() <= 24) {
-			SpriteBatch b = getRenderer().getFirstOpenBatch();
-			if (b.getVertices().remaining() <= 0) {
-				return;
+		if (!ensureSpace(24)) {
+			SpriteBatch sb = r.getFirstOpenBatch(24);
+			
+			if (sb != null && sb != this) {
+				sb.drawCircle(x, y, radius, c, resolution, lineWidth);
 			}
-			b.drawCircle(x, y, radius, c, resolution, lineWidth);
 			return;
 		}
 
@@ -550,12 +575,12 @@ public class SpriteBatch {
 		if (vertices == null) {
 			return;
 		}
-		if (vertices.remaining() < 12) {
-			SpriteBatch b = getRenderer().getFirstOpenBatch();
-			if (b.getVertices().remaining() <= 0) {
-				return;
+		if (!ensureSpace(12)) {
+			SpriteBatch sb = r.getFirstOpenBatch(12);
+			
+			if (sb != null && sb != this) {
+				sb.drawTriangle(x1, y1, x2, y2, x3, y3, z, c, lineWidth);
 			}
-			b.drawTriangle(x1, y1, x2, y2, x3, y3, z, c, lineWidth);
 			return;
 		}
 
@@ -564,13 +589,17 @@ public class SpriteBatch {
 		drawLine(x3, y3, x1, y1, z, c, lineWidth);
 	}
 
+	public void drawVertexNoCheck(float x, float y, float z, Color c, float s, float t) {
+		vertices.putFloat(x).putFloat(y).putFloat(z).putInt(c.getRGB()).putFloat(s).putFloat(t);
+		numVertices++;
+	}
+	
 	public void drawVertex(float x, float y, float z, Color c, float s, float t) {
 		if (vertices.remaining() < 24) {
 			System.out.println("Out of space: "+x+", "+y+", "+z);
 			return;
 		}
-		vertices.putFloat(x).putFloat(y).putFloat(z).putInt(c.getRGB()).putFloat(s).putFloat(t);
-		numVertices++;
+		drawVertexNoCheck(x, y,z, c, s, t);
 	}
 
 	/**
@@ -593,9 +622,9 @@ public class SpriteBatch {
 	public void drawTri(float x1, float y1, float x2, float y2, float x3, float y3,
 						float s1, float t1, float s2, float t2, float s3, float t3,
 						float z, Color c) {
-		drawVertex(x1, y1, z, c, s1, t1);
-		drawVertex(x2, y2, z, c, s2, t2);
-		drawVertex(x3, y3, z, c, s3, t3);
+		drawVertexNoCheck(x1, y1, z, c, s1, t1);
+		drawVertexNoCheck(x2, y2, z, c, s2, t2);
+		drawVertexNoCheck(x3, y3, z, c, s3, t3);
 	}
 
 	/**

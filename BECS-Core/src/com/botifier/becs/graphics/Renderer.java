@@ -16,6 +16,7 @@ import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.GL_DYNAMIC_DRAW;
 import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.glBindBuffer;
+import static org.lwjgl.opengl.GL15.glMapBuffer;
 import static org.lwjgl.opengl.GL15.glUnmapBuffer;
 import static org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER;
 import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
@@ -28,6 +29,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -37,6 +41,8 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL43;
+import org.lwjgl.opengl.GL44;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
@@ -69,22 +75,27 @@ public class Renderer {
 	/**
 	 * Amount of batches the game can create
 	 */
-	public static final int BATCH_AMOUNT = 10;
+	public static final int BATCH_AMOUNT = 30;
 
 	/**
 	 * Whether or not the zoom is being used
 	 */
-	private boolean useZoom = true;
+	private AtomicBoolean useZoom = new AtomicBoolean(true);
 
 	/**
 	 * Whether or not a flush has occurred this frame
 	 */
-	private boolean hasRendered = false;
+	private AtomicBoolean hasRendered = new AtomicBoolean(false);
 
+	/**
+	 * Whether or not the buffer is mapped
+	 */
+	private AtomicBoolean bufferMapped = new AtomicBoolean(false);
+	
 	/**
 	 * The camera zoom
 	 */
-	private float currentZoom = 1f;
+	private volatile float currentZoom = 1f;
 
 	/**
 	 * The location of the camera center
@@ -104,25 +115,24 @@ public class Renderer {
 	/**
 	 * The Byte Buffer
 	 */
-	private ByteBuffer vertices;
+	private AtomicReference<ByteBuffer> vertices = new AtomicReference<>();
 
 	/**
 	 * Number of vertices to draw
 	 */
-	private int numVertices;
+	private AtomicInteger numVertices = new AtomicInteger();
 
-	@SuppressWarnings("unused")
-	private int numInstances;
+	private AtomicInteger numInstances = new AtomicInteger();
 
 	/**
 	 * Current number of batches
 	 */
-	private int numBatches = 0;
+	private AtomicInteger numBatches = new AtomicInteger();
 
 	/**
 	 * Whether or not the renderer is currently attempting to draw
 	 */
-	private boolean drawing;
+	private AtomicBoolean drawing = new AtomicBoolean(false);
 
 	/**
 	 * The Vertex Array Object
@@ -625,9 +635,10 @@ public class Renderer {
 		}
 
 		System.out.println("Clearing Vertices...");
-		if (vertices != null) {
-			MemoryUtil.memFree(vertices);
-			vertices = null;
+		ByteBuffer vert = vertices.get();
+		if (vert != null) {
+			MemoryUtil.memFree(vert);
+			vertices.set(null);
 		}
 
 		System.out.println("Done!");
@@ -644,30 +655,32 @@ public class Renderer {
 	 * @param p ShaderProgram To use
 	 */
 	public void begin(ShaderProgram p) {
-		if (drawing || (vertices == null)) {
+		if (drawing.get() || (vertices.get() == null)) {
 			return;
 		}
 		if (p != null) {
 			p.use();
 		} else {
-			program.use();
 			updateProjectionMatrix(program, projection);
 		}
+		
 		vbo.bind(GL_ARRAY_BUFFER);
-
-		batches.forEach(SpriteBatch::begin);
-		drawing = true;
-		numVertices = 0;
+		vbo.uploadData(GL_ARRAY_BUFFER, vertices.get().capacity(), GL44.GL_STREAM_DRAW);
+		
+		batches.stream().forEach(SpriteBatch::begin);
+		
+		drawing.set(true);
+		numVertices.set(0);
 	}
 
 	/**
 	 * Ends the drawing process
 	 */
 	public void end() {
-		if (!drawing) {
+		if (!drawing.get()) {
 			return;
 		}
-		drawing = false;
+		
 		glUnmapBuffer(GL_ARRAY_BUFFER);
 		batches.forEach(SpriteBatch::end);
 		long time = 0;
@@ -679,6 +692,7 @@ public class Renderer {
 		if (Game.isDebug()) {
 			System.out.println("DEBUG: Flush took " + (System.nanoTime() - time) + "ns");
 		}
+		drawing.set(false);
 	}
 
 	/**
@@ -686,25 +700,25 @@ public class Renderer {
 	 */
 	public void flush() {
 		batches.forEach(SpriteBatch::flush);
-		if (numVertices > 0) {
+		if (numVertices.get() > 0) {
 
 			vao.bind();
-
-			glDrawArrays(GL_TRIANGLES, 0, numVertices);
-
+			GL44.glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, numVertices.get());
+			glDrawArrays(GL_TRIANGLES, 0, numVertices.get());
+			//GL44.glDrawArraysInstanced(GL_TRIANGLES, 0, numVertices.get(), numInstances.get());
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindTexture(GL_TEXTURE_2D, 0);
 		    glEnableVertexAttribArray(0);
 
 			if (Game.isDebug()) {
-				System.out.println("DEBUG: Drew " + numVertices + " vertices using texture ID:"
+				System.out.println("DEBUG: Drew " + numVertices.get() + " vertices using texture ID:"
 						+ (GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D) - 1));
 			}
-			numVertices = 0;
-			numInstances = 0;
+			numVertices.set(0);
+			numInstances.set(0);
 		}
-		useZoom = true;
-		hasRendered = true;
+		useZoom.set(true);
+		hasRendered.set(true);
 	}
 
 	/**
@@ -791,7 +805,7 @@ public class Renderer {
 		int width = Game.getCurrent().getWidth(), height = Game.getCurrent().getHeight();
 
 		currentZoom = zoom;
-		useZoom = true;
+		useZoom.set(true);
 
 		projection = new Matrix4f().ortho2D(0, width * currentZoom, 0, height * currentZoom);
 		setProjectionMatrix(program, projection);
@@ -870,14 +884,14 @@ public class Renderer {
 	 */
 	private void setup() {
 		//Setup tracking variables
-		numVertices = 0;
-		drawing = false;
+		numVertices.set(0);;
+		drawing.set(false);
 		
 		//Setup the zoom
 		currentZoom = 1;
 
 		//Adds the first SpriteBatch
-		numBatches++;
+		numBatches.incrementAndGet();
 		SpriteBatch use = new SpriteBatch(this);
 		batches.add(use);
 
@@ -922,6 +936,8 @@ public class Renderer {
 
 		    System.out.println("Attribute " + i + ": " + name + " Location: " + location);
 		}
+		
+
 	}
 
 	/**
@@ -963,10 +979,11 @@ public class Renderer {
 			throw new RuntimeException("OpenGL 3.2 not supported.");
 		}
 
-		vertices = MemoryUtil.memAlloc(BUFFER_SIZE);
+		if (vertices.get() == null)
+			vertices.set(MemoryUtil.memAlloc(BUFFER_SIZE));
 
 		long size = BUFFER_SIZE * (6 * Float.BYTES + 4);
-		vbo.uploadData(GL_ARRAY_BUFFER, size, GL_DYNAMIC_DRAW);
+		vbo.uploadData(GL_ARRAY_BUFFER, size, GL43.GL_STREAM_DRAW);
 	}
 
 	/**
@@ -1015,7 +1032,7 @@ public class Renderer {
 	 * @param num To add
 	 */
 	public void addVertices(int num) {
-		numVertices += num;
+		numVertices.addAndGet(num);
 	}
 
 	/**
@@ -1024,7 +1041,7 @@ public class Renderer {
 	 * @param num To add
 	 */
 	public void addInstances(int num) {
-		numInstances += num;
+		numInstances.addAndGet(num);
 	}
 
 	public void setShaderProgram(ShaderProgram program) {
@@ -1048,7 +1065,7 @@ public class Renderer {
 	 * @return SpriteBatch that is open
 	 */
 	public SpriteBatch getFirstOpenBatch(int vert) {
-		if (vertices == null)
+		if (vertices.get() == null)
 			return null;
 		SpriteBatch use = null;
 
@@ -1068,27 +1085,29 @@ public class Renderer {
 		if (lookup.isPresent())
 			use = lookup.get();
 		else {
-			if (vertices.capacity() >= BUFFER_SIZE * (BATCH_AMOUNT + 1)) {
+			if (vertices.get().capacity() >= BUFFER_SIZE * (BATCH_AMOUNT + 1)) {
 				//If over capacity, finish rendering and then return the first batch
 				end();
 				begin();
 				return batches.get(0);
 			}
 			//If this is done mid draw finish rendering
-			if (drawing) {
+			if (drawing.get()) {
 				end();
 			}
 			System.out.println("Getting new batch..");
-			numBatches++;
-			MemoryUtil.memFree(vertices);
-			vertices = MemoryUtil.memAlloc(numBatches * BUFFER_SIZE);
-			// vertices = MemoryUtil.memRealloc(vertices, numBatches * BUFFER_SIZE);
+			numBatches.incrementAndGet();
+			MemoryUtil.memFree(vertices.get());
+			vertices.set(MemoryUtil.memAlloc(numBatches.get() * BUFFER_SIZE));
+			//vertices = MemoryUtil.memRealloc(vertices, numBatches * BUFFER_SIZE);
 
-			System.out.println("Current capacity: " + vertices.capacity());
-			System.out.println("Current remaining: " + vertices.remaining());
+			System.out.println("Current capacity: " + vertices.get().capacity());
+			System.out.println("Current remaining: " + vertices.get().remaining());
 
 			use = new SpriteBatch(this);
 			batches.add(use);
+			
+			batches.forEach(b -> b.init());
 		}
 
 		return use;
@@ -1101,13 +1120,15 @@ public class Renderer {
 	 */
 	public void removeBatch(SpriteBatch b) {
 		if (batches.remove(b)) {
-			numBatches--;
+			numBatches.decrementAndGet();
 			// MemoryUtil.memFree(vertices);
 			// vertices = MemoryUtil.memAlloc(numBatches * BUFFER_SIZE);//
-			if (numBatches * BUFFER_SIZE > 0) {
-				if (vertices != null) {
-					MemoryUtil.memFree(vertices);
-					vertices = MemoryUtil.memAlloc(numBatches * BUFFER_SIZE);
+			final int checkValue = numBatches.get() * BUFFER_SIZE;
+			if (checkValue > 0) {
+				ByteBuffer vert = vertices.get();
+				if (vert != null) {
+					MemoryUtil.memFree(vert);
+					vertices.set(MemoryUtil.memAlloc(checkValue));
 				}
 			}
 		}
@@ -1117,7 +1138,7 @@ public class Renderer {
 	 * Resets the last flush status
 	 */
 	public void resetRenderStatus() {
-		hasRendered = false;
+		hasRendered.set(false);
 	}
 
 	/**
@@ -1180,7 +1201,7 @@ public class Renderer {
 	 * @return
 	 */
 	public boolean hasRendered() {
-		return hasRendered;
+		return hasRendered.get();
 	}
 
 	/**
@@ -1189,7 +1210,7 @@ public class Renderer {
 	 * @return If zoom is in use
 	 */
 	public boolean isZoomed() {
-		return useZoom;
+		return useZoom.get();
 	}
 
 	/**
@@ -1198,7 +1219,7 @@ public class Renderer {
 	 * @return Current zoom
 	 */
 	public float getZoom() {
-		return useZoom ? currentZoom : 1;
+		return useZoom.get() ? currentZoom : 1;
 	}
 
 	/**
@@ -1216,7 +1237,7 @@ public class Renderer {
 	 * @return Current number of sprite batches
 	 */
 	public int getNumBatches() {
-		return numBatches;
+		return numBatches.get();
 	}
 
 	/**
@@ -1247,9 +1268,9 @@ public class Renderer {
 	 * @return The vertex buffer
 	 */
 	public ByteBuffer getVertices() {
-		return vertices;
+		return vertices.get();
 	}
-
+	
 	/**
 	 * Returns the VAO
 	 *
