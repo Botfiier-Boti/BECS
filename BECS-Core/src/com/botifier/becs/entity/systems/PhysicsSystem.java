@@ -7,9 +7,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.joml.Vector2f;
@@ -94,42 +96,50 @@ public class PhysicsSystem extends EntitySystem {
 	}
 	
 	@Override
-	public void apply(Entity[] entities) {
+	public CompletableFuture<Void> apply(Entity[] entities) {
 		if ((getConfig().getBoolean(STAGGER_MODE_CONFIG) && !Game.getCurrent().getInput().isKeyPressed(GLFW.GLFW_KEY_SPACE)) || isPaused()) {
-			return;
+			return CompletableFuture.completedFuture(null);
 		}
 		
 		if (!running.get())
-			return;
+			return CompletableFuture.completedFuture(null);
 
 	    final SpatialEntityMap sem = Entity.spatialMap();
 	    
-		//Create a list for tracking all of the entities that have moved
-		List<Entity> movedList = Collections.synchronizedList(new ArrayList<>());
+		List<Entity> awakeEntities = sem.getAwake().stream()
+		        .map(Entity::getEntity)
+		        .collect(Collectors.toList());
 		
-		//Convert all awake entities to futures that run updateEntity
-		Stream<Entity> es = sem.getAwake().stream().parallel().map(e -> Entity.getEntity(e));
-		
-		List<CompletableFuture<Void>> futures = es
-				.map(i -> CompletableFuture.runAsync(() -> {
-					if (running.get()) {
-						updateEntity(i, movedList);
-					}
-				}))
-				.collect(Collectors.toList());
-		//Collect all futures together
-		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-		.thenRun(() -> {
-			//Update all entities in movedList
-			if (running.get())
-				Entity.spatialMap().updateEntitiesInParalell(movedList);
-		});
-		
-		//Wait for futures to complete
-		allOf.join();
-		
+		final int BATCH_SIZE = 100; // Adjust based on your performance needs
+	    
+	    // Split entities into batches and process in parallel
+	    List<CompletableFuture<Void>> futures = IntStream.range(0, (awakeEntities.size() + BATCH_SIZE - 1) / BATCH_SIZE)
+	        .parallel()
+	        .mapToObj(i -> {
+	            int startIndex = i * BATCH_SIZE;
+	            int endIndex = Math.min(startIndex + BATCH_SIZE, awakeEntities.size());
+	            return awakeEntities.subList(startIndex, endIndex);
+	        })
+	        .map(batch -> CompletableFuture.runAsync(() -> {
+	            if (!running.get()) return;
+	            
+	            List<Entity> batchMovedList = new ArrayList<>();
+	            for (Entity entity : batch) {
+	                updateEntity(entity, batchMovedList);
+	            }
+	            // Update spatial map for this batch immediately
+	            if (!batchMovedList.isEmpty()) {
+	                Entity.spatialMap().updateEntitiesInSequence(batchMovedList);
+	            }
+	        }))
+	        .collect(Collectors.toList());
+
 		//Proceed to the next physics tick
 		physicsTick.incrementAndGet();
+		
+	    // Wait for all futures to complete
+	    return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+		
 	}
 
 	/**
@@ -472,7 +482,8 @@ public class PhysicsSystem extends EntitySystem {
 			return false;
 		}
 		//Normal movement
-		posComponent.set(p.add(v));
+		p.add(v);
+		posComponent.set(p);
 		
 		//Tracks the boolean facing direction of the entity
 		if (hasComponent(e, "BooleanDirection")) {

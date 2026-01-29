@@ -41,7 +41,7 @@ public class EntityComponentManager {
 	 * Initializes basic components
 	 */
 	public static synchronized void init() {
-		overrideMap.put(Vector2f.class, EntityVector2fComponent.class);
+		overrideMap.put(Vector2fc.class, EntityVector2fcComponent.class);
 		
 		createComponent("ArrowKeyControlled", boolean.class);
 		createComponent("BooleanDirection", boolean.class);

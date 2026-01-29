@@ -1,5 +1,6 @@
 package com.botifier.becs.entity;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -73,11 +74,12 @@ public class EntityComponent<T> implements Cloneable {
 	 * @param info Information to use
 	 */
 	public void set(T info) {
-		if (!info.equals(get()))
-			Game.getCurrent().getEventManager().executeEventOn(new EntityComponentUpdatedEvent<T>(this, get(), info),
+		T old = information.getAndSet(info);
+		
+		if (shouldFireEvent(info, old))
+			Game.getCurrent().getEventManager().executeEventOn(new EntityComponentUpdatedEvent<T>(this, old, info),
 																   getName(),
 																   getOwnerUUID());
-		information.set(info);
 	}
 	
 
@@ -87,9 +89,11 @@ public class EntityComponent<T> implements Cloneable {
 	 * @return T The stored information
 	 */
 	public T update(UnaryOperator<T> updater) {
-		T old = get();
-		T result = information.updateAndGet(updater);
-		if (!result.equals(get()))
+		
+		T old = information.getAndUpdate(updater);
+		T result = information.get();
+		
+		if (shouldFireEvent(result, old))
 			Game.getCurrent().getEventManager().executeEventOn(new EntityComponentUpdatedEvent<T>(this, old, result),
 																   getName(),
 																   getOwnerUUID());
@@ -112,8 +116,12 @@ public class EntityComponent<T> implements Cloneable {
 		return owner != null ? owner.getUUID() : null;
 	}
 
-	public Class<T> getDataType() {
+	public final Class<T> getDataType() {
 		return type;
+	}
+	
+	protected boolean shouldFireEvent(Object o1, Object o2) {
+		return !Objects.deepEquals(o1, o2);
 	}
 	@SuppressWarnings("unchecked")
 	@Override

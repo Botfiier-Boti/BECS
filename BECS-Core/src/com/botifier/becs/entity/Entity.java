@@ -119,6 +119,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 			removeComponent(s);
 		}
 		
+		Game.getCurrent().getEventManager().unregisterUUID(getUUID());
 	}
 
 	/**
@@ -130,6 +131,8 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		if (!hasComponent("Position")) {
 			return;
 		}
+		EntityComponent<Image> i = getComponent("image");
+		
 		//Gets the position of this entity
 		Vector2f pos = (Vector2f) getComponent("Position").get();
 		//Gets the entity's image
@@ -238,6 +241,19 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		return (EntityComponent<T>) components.get(name.toLowerCase());
 	}
 
+	/**
+	 * Gets the value of a component, or returns a default value if the component is missing.
+	 * @param <T> Type of the component
+	 * @param name Component name
+	 * @param defaultValue Value to return if the component doesn't exist
+	 * @return The stored value, or defaultValue if missing
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getComponentValueOrDefault(String name, T defaultValue) {
+	    EntityComponent<T> comp = (EntityComponent<T>) components.get(name.toLowerCase());
+	    return comp != null ? comp.get() : defaultValue;
+	}
+	
 	/**
 	 * Returns the name of the entity
 	 * @return Entity Name

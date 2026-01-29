@@ -2,6 +2,8 @@
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -26,7 +28,7 @@ import com.botifier.becs.util.Math2;
  * @author Botifier
  */
 public class ArrowKeyControlsSystem extends EntitySystem {
-
+	
 	public AtomicLong keyTick = new AtomicLong(0);
 	
     /**
@@ -48,7 +50,7 @@ public class ArrowKeyControlsSystem extends EntitySystem {
     }
 
 	@Override
-	public void apply(Entity[] entities) {
+	public CompletableFuture<Void> apply(Entity[] entities) {
 		//Gets the Input
 		Input in = Game.getCurrent().getInput();
 
@@ -61,10 +63,8 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		//Creates a combined future
 		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 		
-		//Waits for the futures to complete
-		allOf.join();
-		
 		keyTick.incrementAndGet();
+		return allOf;
 	}
 
 	/**
@@ -118,7 +118,8 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		}
 		//If toAdd has any movement update the velocity
 		if (toAdd.length() > 0) {
-			velocityComponent.set(v.add(toAdd));
+			v.add(toAdd);
+			velocityComponent.set(v);
 		}
 		
 	}

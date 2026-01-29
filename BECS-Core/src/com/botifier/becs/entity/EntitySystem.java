@@ -2,6 +2,7 @@ package com.botifier.becs.entity;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import com.botifier.becs.Game;
 
@@ -48,7 +49,7 @@ public abstract class EntitySystem {
 	 * This method should check isPaused() if pausing is desired.
 	 * @param entities Entity[] Array to apply to
 	 */
-	public abstract void apply(Entity[] entities);
+	public abstract CompletableFuture<Void> apply(Entity[] entities);
 
 	/**
 	 * Run when game is closing
