@@ -18,7 +18,7 @@
 	</properties>
 	<profiles>
 		<profile>
-			<id>lwjgl-natives-linux-amd64</id>
+			<id>lwjgl-natives-linux</id>
 			<activation>
 				<os>
 					<family>unix</family>
@@ -27,7 +27,7 @@
 				</os>
 			</activation>
 			<properties>
-				<lwjgl.natives>natives-linux-x86_64</lwjgl.natives>
+				<lwjgl.natives>natives-linux</lwjgl.natives>
 			</properties>
 		</profile>
 		<profile>
