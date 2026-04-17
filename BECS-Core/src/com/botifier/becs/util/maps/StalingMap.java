@@ -108,7 +108,8 @@ public class StalingMap<K, V> implements Map<K, V> {
         }
     }
 
-    public final void stale() {
+    @SuppressWarnings("unused")
+	public final void stale() {
         if (!((boolean) STALING.compareAndSet(this, false, true))) return;
         
         CompletableFuture.runAsync(() -> {
@@ -121,7 +122,7 @@ public class StalingMap<K, V> implements Map<K, V> {
         	
         	mutable.clear();
         	tombstones.clear();
-    	}, EXECUTOR).whenComplete((_, _) -> {
+    	}, EXECUTOR).whenComplete((l, i) -> {//CICD didn't like the unnamed parameters
         	updateCount.getAndSet(0);
             STALING.setVolatile(this, false);
     	});
