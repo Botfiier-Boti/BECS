@@ -11,6 +11,7 @@ import java.util.Objects;
 
 import org.joml.Intersectionf;
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
@@ -288,7 +289,7 @@ public class Line extends Shape {
 	}
 
 	@Override
-	public Vector2f closestTo(Vector2f v) {
+	public Vector2f closestTo(Vector2fc v) {
 		Vector2f lineVec = new Vector2f(p2).sub(p1);
 		Vector2f pVec = new Vector2f(v).sub(p1);
 

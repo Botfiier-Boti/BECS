@@ -323,8 +323,8 @@ public class Texture {
 	public static Texture createColoredTexture(int width, int height, Color c) {
 		String locationString = "**internal**:" + c.hashCode();
 		ByteBuffer image = null;
-		if (textureLocations.containsKey(locationString)) {
-			Texture t = textureLocations.get(locationString);
+		Texture t = null;
+		if (( t = textureLocations.get(locationString)) != null) {
 			return t;
 		}
 		image = MemoryUtil.memCalloc(width * height * 4);
@@ -339,7 +339,7 @@ public class Texture {
 		}
 
 		image.flip();
-		Texture t = createTexture(width, height, image, locationString);
+		t = createTexture(width, height, image, locationString);
 		return t;
 	}
 

@@ -45,8 +45,7 @@ public class EntityComponent<T> implements Cloneable {
 	 */
 	@SuppressWarnings("unchecked")
 	public EntityComponent(String name, Entity owner, T info) {
-		information = new AtomicReference<>();
-		set(info);
+		information = new AtomicReference<>(info);
 		this.name = name;
 		this.owner = owner;
 		this.type = (Class<T>) info.getClass();
@@ -121,8 +120,15 @@ public class EntityComponent<T> implements Cloneable {
 	}
 	
 	protected boolean shouldFireEvent(Object o1, Object o2) {
-		return !Objects.deepEquals(o1, o2);
+		return owner.isReal() && !Objects.deepEquals(o1, o2);
 	}
+	
+	
+	@Override
+	public String toString() {
+		return String.format("%s %s %s %s", name, owner.getName(), type.getName(), information.get().toString());
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	public EntityComponent<T> clone() {

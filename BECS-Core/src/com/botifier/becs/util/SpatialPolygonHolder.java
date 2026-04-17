@@ -15,6 +15,7 @@ import org.joml.Vector2f;
 import org.joml.Vector2fc;
 
 import com.botifier.becs.entity.Entity;
+import com.botifier.becs.util.maps.SpatialEntityMap;
 import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 

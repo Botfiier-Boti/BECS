@@ -4,6 +4,7 @@ import javax.annotation.Nonnull;
 
 import org.joml.Math;
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.util.shapes.*;
 
@@ -172,8 +173,8 @@ public class Math2 {
 	 * @param dst2 Vector2f second
 	 * @return float The angle between
 	 */
-	public static float calcAngle(Vector2f src2,Vector2f dst2) {
-		return Math.atan2(dst2.y-src2.y, dst2.x-src2.x);
+	public static float calcAngle(Vector2fc src2,Vector2fc dst2) {
+		return Math.atan2(dst2.y()-src2.y(), dst2.x()-src2.x());
 	}
 
 	public static float calcAngle(float x1, float y1, float x2, float y2) {
@@ -182,7 +183,7 @@ public class Math2 {
 
 	//TODO: find a way to do this with different outputs without copy/pasting
 	public static float greatestNumber(float x, float y) {
-		return x > y ? x : x;
+		return x > y ? x : y;
 	}
 	public static float lowestNumber(float x, float y) {
 		return x > y ? y : x;
@@ -225,6 +226,9 @@ public class Math2 {
 
 	/**
 	 * Rounds a float to x decimal places
+	 * 
+	 * Rounds by snapping decimals
+	 * technically truncation, but I named it round so it is round
 	 * @param f float To round
 	 * @param dec int Number of decimals
 	 * @return float rounded number
@@ -232,18 +236,20 @@ public class Math2 {
 	public static float round(float f, int dec) {
 		float divisor =  (float) java.lang.Math.pow(10, dec);
 		int value = (int) (f * divisor);
-
 		return value / divisor;
 	}
 	/**
 	 * Rounds a double to x decimal places
+	 * 
+	 * Rounds by snapping decimals
+	 * technically truncation, but I named it round so it is round
 	 * @param f double To round
 	 * @param dec int Number of decimals
 	 * @return double rounded number
 	 */
 	public static double round(double f, int dec) {
 		double divisor =  java.lang.Math.pow(10, dec);
-		int value = (int) (f * divisor);
+		long value = (long) (f * divisor);
 
 		return value / divisor;
 	}
@@ -465,7 +471,7 @@ public class Math2 {
 		float mag = toUse.length();
 
 		if (mag != 0 && mag > limit) {
-			toUse.mul(limit);
+			toUse.mul(limit / mag);
 		}
 		Vector2f newVector = new Vector2f(toUse);
 		return newVector;

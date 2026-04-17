@@ -7,6 +7,7 @@ import java.io.ObjectOutput;
 
 import org.joml.Math;
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
@@ -382,8 +383,8 @@ public class RotatableRectangle extends Shape {
 	}
 
 	@Override
-	public Vector2f closestTo(Vector2f v) {
-		return closestTo(new RotatableRectangle(v, 1, 1));
+	public Vector2f closestTo(Vector2fc v) {
+		return closestTo(new RotatableRectangle(v.get(new Vector2f()), 1, 1));
 	}
 
 	@Override
@@ -420,28 +421,6 @@ public class RotatableRectangle extends Shape {
 			}
 		}
 		return true;
-	}
-
-	public boolean intersects(RotatableRectangle rr, Vector2f move) {
-		RotatableRectangle temp = new RotatableRectangle(this);
-
-		float mX = move.x;
-		float mY = move.y;
-
-		for (float y = 0; y < Math.abs(mY); y++) {
-			temp.setCenter(temp.getCenter().x, temp.getCenter().y + Math.signum(mY));
-			if (temp.intersects(rr)) {
-				return true;
-			}
-		}
-		for (float y = 0; y < Math.abs(mY); y++) {
-			temp.setCenter(temp.getCenter().x + Math.signum(mX), temp.getCenter().y);
-			if (temp.intersects(rr)) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	@Override

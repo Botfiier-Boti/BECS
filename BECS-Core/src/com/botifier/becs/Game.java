@@ -15,12 +15,11 @@ import static org.lwjgl.opengl.GL11.glClearColor;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -42,6 +41,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.joml.Vector2f;
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallback;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
@@ -52,8 +52,9 @@ import org.lwjgl.glfw.GLFWWindowCloseCallback;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLUtil;
+import org.lwjgl.system.MemoryStack;
 
-import com.botifier.becs.config.IConfig;
+import com.botifier.becs.config.Config;
 import com.botifier.becs.entity.Entity;
 import com.botifier.becs.entity.EntityComponentManager;
 import com.botifier.becs.entity.EntitySystem;
@@ -65,6 +66,9 @@ import com.botifier.becs.sound.SoundListener;
 import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
 import com.botifier.becs.util.events.EventManager;
+import com.botifier.becs.util.glfw.GLFWWindow;
+import com.botifier.becs.util.glfw.GLFWInput;
+import com.botifier.becs.util.glfw.GLFWGameTimer;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 
 //Based on https://www.lwjgl.org/guide
@@ -253,7 +257,7 @@ public abstract class Game {
 	/**
 	 * Current configs
 	 */
-	private Map<String, IConfig> configs = new ConcurrentHashMap<>();
+	private Map<String, Config> configs = new ConcurrentHashMap<>();
 
 	/**
 	 * Game constructor
@@ -297,6 +301,7 @@ public abstract class Game {
 		l.lock();
 		try {
 			initialize();
+			eventManager.processEvents();
 		} finally {
 			l.unlock();
 		}
@@ -318,6 +323,7 @@ public abstract class Game {
 		window.destroy();
 		GL.setCapabilities(null);
 		glfwTerminate();
+		System.exit(0);
 	}
 
 	/**
@@ -359,7 +365,7 @@ public abstract class Game {
 		}
 		current = this;
 
-		window = new Window(title, getWidth(), getHeight(), resizable, vsync);
+		window = new GLFWWindow(title, getWidth(), getHeight(), resizable, vsync);
 
 		glfwMakeContextCurrent(window.getId());
 
@@ -393,7 +399,7 @@ public abstract class Game {
 				}
 			}
 		});
-
+		
 		GLFW.glfwSetWindowCloseCallback(window.getId(), new GLFWWindowCloseCallback() {
 
 			@Override
@@ -415,8 +421,18 @@ public abstract class Game {
 			}
 
 		});
+		
+		GLFW.glfwSetErrorCallback(new GLFWErrorCallback() {
 
-		t = new GameTimer();
+			@Override
+			public void invoke(int error, long description) {
+				System.out.println("GLFW ERROR CODE "+ error +": "+ GLFWErrorCallback.getDescription(description));
+				
+			}
+			
+		});
+
+		t = new GLFWGameTimer();
 		t.init();
 
 		EntityComponentManager.init();
@@ -438,7 +454,7 @@ public abstract class Game {
 		eventManager.registerListener(wl);
 		worldListenerId.set(wl.getOwner());
 
-		input = new Input(window.getId());
+		input = new GLFWInput(window.getId());
 		
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 
@@ -457,7 +473,7 @@ public abstract class Game {
 	/**
 	 * Creates a thread to separate the window and game loop
 	 */
-	private void procLoop() {
+	private final void procLoop() {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 		if (isDebug()) {
@@ -473,21 +489,23 @@ public abstract class Game {
 
 		RenderRunnable rr = new RenderRunnable();
 		Thread t = new Thread(() -> {
-			while (running.get())
+			while (running.get()) {
 				rr.run();
+			}
 		}, "Render Thread");
 		
 		t.setDaemon(true);
-		t.setPriority(Thread.MAX_PRIORITY);
+		t.setPriority(Thread.MIN_PRIORITY);
 		t.start();
 
 		while (running.get()) {
 			GLFW.glfwWaitEventsTimeout(1);
-
+			Thread.onSpinWait();
 		}
 		
 		update.cancel(true);
 		schedular.shutdownNow();
+		
 	}
 
 	/**
@@ -595,7 +613,7 @@ public abstract class Game {
 	 * @param name   String Name of the config
 	 * @param config IConfig To use
 	 */
-	public void addConfig(String name, IConfig config) {
+	public void addConfig(String name, Config config) {
 		configs.put(name.toLowerCase(), config);
 	}
 
@@ -605,7 +623,7 @@ public abstract class Game {
 	 * @param name String Name of the config
 	 * @return IConfig The dropped config
 	 */
-	public IConfig dropConfig(String name) {
+	public Config dropConfig(String name) {
 		return configs.remove(name.toLowerCase());
 	}
 
@@ -976,7 +994,7 @@ public abstract class Game {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends IConfig> T getConfig(String name) {
+	public <T extends Config> T getConfig(String name) {
 		return (T) configs.getOrDefault(name.toLowerCase(), null);
 	}
 
@@ -1000,11 +1018,14 @@ public abstract class Game {
 				if (!noLock && lock.tryLock(100, TimeUnit.MILLISECONDS)) {
 					try {
 						tick();
+						eventManager.processEvents();
 					} finally {
 						lock.unlock(); // Unlocks if locking is enabled
 					}
-				} else
+				} else {
 					tick();
+					eventManager.processEvents();
+				}
 			} catch (InterruptedException ie) {
 				//Don't really care if the lock is interrupted
 				if (debug.get())
@@ -1021,6 +1042,9 @@ public abstract class Game {
 			
 			for (EntitySystem system : systems) {
 				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); // Obtains all valid entities
+				
+				if (entities.length == 0)
+					System.out.println("Somethings wrong");
 				
 				system.apply(entities).join(); // Applies the system to all of those entities and waits for futures to complete
 			}
@@ -1050,26 +1074,29 @@ public abstract class Game {
 			try {
 				if (!noLock && lock.tryLock(100, TimeUnit.MILLISECONDS)) {
 					try {
+						//eventManager.processEvents();
 						render();
 					} finally {
 						lock.unlock();
 					}
 				} else {
+					eventManager.processEvents();
 					render();
 				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} finally {
-				if (getRenderer().hasRendered()) {
+				if (getRenderer().hasRendered()) 
 					glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
-				}
+				
 				getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
 													// Draws happened on this frame
 				t.updateFPS(); // Updates the FPS counter
 
 				LockSupport.parkNanos(getFrameDelayNs());
 			}
-			//Thread.yield();
+			
+			Thread.yield();
 		}
 
 		private void render() {

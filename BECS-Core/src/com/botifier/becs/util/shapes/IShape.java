@@ -80,6 +80,12 @@ public interface IShape {
 	public void drawImageNoBegin(Renderer r, Image i, Color c);
 
 	/**
+	 * Returns the shape's center
+	 * @return Vector2f Shape's center
+	 */
+	public Vector2f getCenter();
+	
+	/**
 	 * Converts the shape into a Polygon
 	 * @return Polygon result
 	 */

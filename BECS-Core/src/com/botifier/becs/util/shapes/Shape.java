@@ -7,6 +7,7 @@ import java.io.ObjectInput;
 import java.util.Objects;
 
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
@@ -57,6 +58,7 @@ public abstract class Shape implements IShape, Cloneable, Externalizable {
 		center.set(x, y);
 	}
 
+	@Override
 	public Vector2f getCenter() {
 		return center;
 	}
@@ -103,7 +105,7 @@ public abstract class Shape implements IShape, Cloneable, Externalizable {
 
 	public abstract Vector2f closestTo(Shape s);
 
-	public abstract Vector2f closestTo(Vector2f v);
+	public abstract Vector2f closestTo(Vector2fc v);
 
 	public abstract boolean intersects(Shape s);
 

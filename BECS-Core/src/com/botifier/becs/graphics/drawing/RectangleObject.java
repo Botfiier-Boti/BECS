@@ -1,11 +1,12 @@
 package com.botifier.becs.graphics.drawing;
 
+import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.SpriteBatch;
 
-public class RectangleObject extends RenderObject {
+public record RectangleObject (float x, float y, float width, float height, float rotation) implements RenderObject {
 
 	@Override
-	int drawFunction(SpriteBatch sb) {
+	public int drawFunction(Renderer r) {
 		return 0;
 	}
 

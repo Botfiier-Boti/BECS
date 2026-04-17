@@ -25,7 +25,7 @@ public class WorldListener extends EventListener {
 			sh.setCenter(p.x, p.y);
 			e.getComponent().set(sh);
 
-			Entity.spatialMap().addEntity(en);
+			Entity.spatialMap().addEntity(en, 1);
 		}
 	}
 	
@@ -42,7 +42,7 @@ public class WorldListener extends EventListener {
 			sh.setCenter(p.x, p.y);
 			s.set(sh);
 
-			Entity.spatialMap().addEntity(en);
+			Entity.spatialMap().addEntity(en, 1);
 		}
 	}
 	
@@ -68,6 +68,7 @@ public class WorldListener extends EventListener {
 	public void onVelocityUpdate(EntityComponentUpdatedEvent<Vector2fc> e) {
 		if (!e.getNewValue().equals(new Vector2f(), 0.001f)) {
 			Entity.spatialMap().wakeEntity(e.getComponent().getOwner());
+			
 		}
 	}
 }

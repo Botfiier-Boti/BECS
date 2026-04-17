@@ -83,8 +83,8 @@ class PolygonTest {
 		Polygon p = Polygon.createPolygon(Arrays.copyOf(points, points.length));
 		
 		//Tests 8 directions 
-		for (int y = -1; y < 1; y++) {
-			for (int x = -1; x < 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			for (int x = -1; x <= 1; x++) {
 				Vector2f test = new Vector2f(x, y);
 				Polygon moved = p.move(test);
 				

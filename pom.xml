@@ -5,7 +5,7 @@
 	<packaging>pom</packaging>
 	<groupId>BECS</groupId>
 	<artifactId>BECS</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<name>BECS</name>
 	<description>Game development library utilizing lwjgl</description>
 	<properties>
@@ -13,8 +13,8 @@
 		<lwjgl.version>3.4.1</lwjgl.version>
 		<joml.version>1.10.7</joml.version>
 		<joml-primitives.version>1.10.0</joml-primitives.version>
-    	<maven.compiler.source>17</maven.compiler.source>
-    	<maven.compiler.target>17</maven.compiler.target>
+    	<maven.compiler.source>24</maven.compiler.source>
+    	<maven.compiler.target>24</maven.compiler.target>
 	</properties>
 	<profiles>
 		<profile>

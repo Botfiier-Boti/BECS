@@ -11,6 +11,7 @@ import org.joml.Vector2f;
 import org.joml.Vector2fc;
 
 import com.botifier.becs.Game;
+import com.botifier.becs.entity.util.ComponentKey;
 import com.botifier.becs.events.*;
 import com.botifier.becs.events.listeners.PhysicsListener;
 import com.botifier.becs.graphics.images.Image;
@@ -21,21 +22,16 @@ public class EntityComponentManager {
 	/**
 	 * Maps list of owners and name of component
 	 */
-	private static final ConcurrentHashMap<String, CopyOnWriteArraySet<Entity>> componentMap = new ConcurrentHashMap<>();
+	private static final ConcurrentHashMap<CharSequence, CopyOnWriteArraySet<Entity>> componentMap = new ConcurrentHashMap<>();
 	/**
 	 * Maps name of component to class type of information within
 	 */
-	private static final ConcurrentHashMap<String, Class<?>> nameMap = new ConcurrentHashMap<>();
+	private static final ConcurrentHashMap<CharSequence, ComponentKey<?>> nameMap = new ConcurrentHashMap<>();
 	
 	/**
 	 * Map of overrides for custom component types
 	 */
 	private static final ConcurrentHashMap<Class<?>, Class<? extends EntityComponent<?>>> overrideMap = new ConcurrentHashMap<>();
-	
-	/**
-	 * Caches the compatibility of certain classes
-	 */
-	private static final ConcurrentHashMap<Class<?>, Set<Class<?>>> compatabilityCache = new ConcurrentHashMap<>();
 	
 	/**
 	 * Initializes basic components
@@ -68,7 +64,7 @@ public class EntityComponentManager {
 	 * @param name Name of component
 	 * @param dataType Class Type of the information that will be stored within
 	 */
-	public static void createComponent(String name,  Class<?> dataType) {
+	public static <T> void createComponent(String name,  Class<T> dataType) {
 		if (dataType == null) {
 			throw new IllegalArgumentException("dataType cannot be null!");
 		}
@@ -76,7 +72,7 @@ public class EntityComponentManager {
 			throw new IllegalArgumentException(String.format("Component of name '%s' already exists.", name));
 		}
 
-		nameMap.put(name.toLowerCase(), dataType);
+		nameMap.put(name.toLowerCase(), new ComponentKey<T>(name.toLowerCase(), dataType));
 		
 		//Ensure the class is loaded into memory
 		try {
@@ -123,13 +119,13 @@ public class EntityComponentManager {
 		
 		if (en == null)
 			return null;
-		Class<?> type = nameMap.getOrDefault(componentName.toLowerCase(), null);
+		ComponentKey<?> type = nameMap.getOrDefault(componentName.toLowerCase(), null);
 		
 		if (type == null)
 			throw new IllegalArgumentException(String.format("No type mapping for for component %s", lower));
 		
-		if (!isCompatibleType(type, en.getDataType()))
-			throw new ClassCastException(String.format("%s is not compatible with %s", en.get().getClass().getSimpleName(), type.getSimpleName()));
+		if (!type.isCompatibleType(en.getDataType()))
+			throw new ClassCastException(String.format("%s is not compatible with %s", en.get().getClass().getSimpleName(), type.type().getSimpleName()));
 		
 		e.components.remove(lower);
 		componentMap.get(lower).remove(e);
@@ -158,14 +154,14 @@ public class EntityComponentManager {
 		}
 		
 		EntityComponent<Z> component = null;
-		Class<? extends EntityComponent<?>> clazz = overrideMap.computeIfPresent(nameMap.get(componentName.toLowerCase()), (a, b) -> {
+		Class<? extends EntityComponent<?>> clazz = overrideMap.computeIfPresent(nameMap.get(componentName.toLowerCase()).type(), (a, b) -> {
 			return b;
 		});
 		
 		
-		Class<? > type = nameMap.getOrDefault(componentName.toLowerCase(), null);
-		if (!isCompatibleType(type, data.getClass()))
-			throw new ClassCastException(String.format("%s is not compatible with %s", data.getClass().getSimpleName(), type.getSimpleName()));
+		ComponentKey<? > type = nameMap.getOrDefault(componentName.toLowerCase(), null);
+		if (!type.isCompatibleType(data.getClass()))
+			throw new ClassCastException(String.format("%s is not compatible with %s", data.getClass().getSimpleName(), type.type().getSimpleName()));
 		
 		if (clazz == null) {
 				component = new EntityComponent<Z>(componentName, e, data);
@@ -190,6 +186,23 @@ public class EntityComponentManager {
 		Set<Entity> entities = componentMap.get(componentName.toLowerCase());
 		return entities != null ? Collections.unmodifiableSet(entities) : Collections.emptySet();
 	}
+	
+	/**
+	 * Returns the number of entities with a component, -1 means it doesnt exist.
+	 * @param componentName Name of the component
+	 * @return int Number of entities
+	 */
+	public static int getNumberOfEntitiesWithComponent(String componentName) {
+		Set<Entity> entities = componentMap.get(componentName.toLowerCase());
+		
+		return entities != null ? entities.size() : -1;
+	}
+	
+	public static <T> EntityComponent<T> getComponent(Entity e, ComponentKey<T> key) {
+		@SuppressWarnings("unchecked")
+		EntityComponent<T> comp = (EntityComponent<T>) e.components.get(key.name());
+		return comp;
+	}
 
 	/**
 	 * Checks if an entity has specified component
@@ -209,75 +222,14 @@ public class EntityComponentManager {
 	 * @return The class type
 	 */
 	public static Class<?> getComponentDataType(String name) {
-		return nameMap.get(name.toLowerCase());
+		return getComponentKey(name).type();
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T> ComponentKey<T> getComponentKey(String name){
+		return (ComponentKey<T>) nameMap.get(name.toLowerCase());
 	}
 
-	/**
-	 * Returns the wrappers of primitives classes
-	 * TODO: Move this somewhere else
-	 * @param primitiveType
-	 * @return
-	 */
-	private static Class<?> getWrapperClass(Class<?> primitiveType) {
-	    if (primitiveType == int.class) return Integer.class;
-	    if (primitiveType == long.class) return Long.class;
-	    if (primitiveType == float.class) return Float.class;
-	    if (primitiveType == double.class) return Double.class;
-	    if (primitiveType == boolean.class) return Boolean.class;
-	    if (primitiveType == char.class) return Character.class;
-	    if (primitiveType == byte.class) return Byte.class;
-	    if (primitiveType == short.class) return Short.class;
-	    return primitiveType;
-	}
-	
-	/**
-	 * Returns the primitive version of primitive wrapper classes
-	 * TODO: Move this somewhere else
-	 * @param primitiveType Class<?> Wrapper class
-	 * @return Class<?> The primitive version of the wrapper
-	 */
-	private static Class<?> getPrimitiveClass(Class<?> primitiveType) {
-	    if (primitiveType == Integer.class) return int.class;
-	    if (primitiveType == Long.class) return long.class;
-	    if (primitiveType == Float.class) return float.class;
-	    if (primitiveType == Double.class) return double.class;
-	    if (primitiveType == Boolean.class) return boolean.class;
-	    if (primitiveType == Character.class) return char.class;
-	    if (primitiveType == Byte.class) return byte.class;
-	    if (primitiveType == Short.class) return short.class;
-	    return primitiveType;
-	}
-	
-	private static Class<?> resolveType(Class<?> clazz) {
-		if (clazz.isPrimitive()) return getWrapperClass(clazz);
-		return getPrimitiveClass(clazz);
-	}
-	
-	
-	/**
-	 * Checks if a class is compatible with another and caches that information if so.
-	 * @param expected Class<?> Class that actual should be compatible with
-	 * @param actual Class<?> Class to check
-	 * @return boolean Whether or not expected can be assigned actual
-	 */
-	private static boolean isCompatibleType(Class<?> expected, Class<?> actual) {
-		Set<Class<?>> compat = compatabilityCache
-				.computeIfAbsent(expected, type -> {
-					Set<Class<?>> compatibleTypes = ConcurrentHashMap.newKeySet();
-					compatibleTypes.add(type);
-					compatibleTypes.add(resolveType(type));
-					return compatibleTypes;
-				});
-		
-		boolean contains = compat.contains(actual);
-		if (!contains && expected.isAssignableFrom(actual)) {
-			compat.add(actual);
-			contains = true;
-		}
-		
-		return contains;
-		
-	}
 }
 
 

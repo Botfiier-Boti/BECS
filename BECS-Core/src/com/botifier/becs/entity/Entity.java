@@ -2,8 +2,10 @@ package com.botifier.becs.entity;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -16,7 +18,7 @@ import com.botifier.becs.Game;
 import com.botifier.becs.events.EntityDeathEvent;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
-import com.botifier.becs.util.SpatialEntityMap;
+import com.botifier.becs.util.maps.SpatialEntityMap;
 import com.botifier.becs.util.shapes.Shape;
 
 /**
@@ -33,7 +35,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	/**
 	 * Spatial map of all entities
 	 */
-	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(512);
+	private static SpatialEntityMap entitiesInSpace = new SpatialEntityMap(1024);
 
 	/**
 	 * List of current components for easy access
@@ -136,7 +138,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		//Gets the position of this entity
 		Vector2f pos = (Vector2f) getComponent("Position").get();
 		//Gets the entity's image
-		Image im = (Image) getComponent("Image").get();
+		Image im = i != null ? i.get() : null;
 		//Sets the color to white
 		Color c = Color.white;
 		//Changes the color if there is an Color component
@@ -147,12 +149,14 @@ public class Entity implements Comparable<Entity>, Cloneable{
 		//Use the collision shape as a base to draw the image if it exists
 		if (hasComponent("CollisionShape")) {
 			Shape s = (Shape) getComponent("CollisionShape").get();
-			//Use the AutoBatcher for rendering if enabled
-			if (autoBatch) {
-				r.getAutoBatcher().add(im, s, c);
-				return;
-			}
+			
+			
 			if (im != null) { //If the image exists
+				//Use the AutoBatcher for rendering if enabled
+				if (autoBatch) {
+					r.getAutoBatcher().add(im, s, c);
+					return;
+				}
 				r.begin(im.getShaderProgram());
 				s.drawImage(r, im, c, false);
 				r.end();
@@ -284,11 +288,16 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * @return boolean Whether or not the entity has the specified component
 	 */
 	public boolean hasComponent(String... name) {
-		for (String s : name) {
-			if (components.containsKey(s.toLowerCase()))
-				return true;
-		}
-		return false;
+		return Arrays.stream(name).allMatch(c -> components.containsKey(c.toLowerCase()));
+	}
+	
+	/**
+	 * Checks whether or not the entity current has a component
+	 * @param name String Name of the component
+	 * @return boolean Whether or not the entity has the specified component
+	 */
+	protected boolean hasComponentPrelower(String... name) {
+		return Arrays.stream(name).allMatch(c -> components.containsKey(c));
 	}
 
 	/**
@@ -335,6 +344,31 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 */
 	public static Entity getEntity(UUID u) {
 		return entities.getOrDefault(u, null);
+	}
+	
+	/**
+	 * Gets multiple Entities by their UUIDs
+	 * @param u UUID[] To use
+	 * @return Entities that with the specified UUIDs; an empty array if it doesn't exist
+	 */
+	public static Entity[] getEntities(UUID... u) {
+		return Arrays.stream(u)
+					 .map(uu -> entities.getOrDefault(uu, null))
+					 .filter(Objects::nonNull)
+					 .toArray(Entity[]::new);
+	}
+	
+	/**
+	 * Gets multiple Entities by their UUIDs in parallel
+	 * @param u UUID[] To use
+	 * @return Entities that with the specified UUIDs; an empty array if it doesn't exist
+	 */
+	public static Entity[] getEntitiesInParallel(UUID... u) {
+		return Arrays.stream(u)
+					 .parallel()
+					 .map(uu -> entities.getOrDefault(uu, null))
+					 .filter(Objects::nonNull)
+					 .toArray(Entity[]::new);
 	}
 
 	/**
@@ -390,7 +424,7 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	public Entity falseClone() {
 		Entity clone = new Entity(this.name, this.uuid);
 		boolean collision = false;
-		for (Map.Entry<String, EntityComponent<?>> entry : this.components.entrySet()) {
+		for (Entry<String, EntityComponent<?>> entry : this.components.entrySet()) {
 	        String key = entry.getKey().toLowerCase();
 	        EntityComponent<?> ec = entry.getValue().clone();
 	        clone.components.put(key, ec);

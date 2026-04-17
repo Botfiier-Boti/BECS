@@ -1,8 +1,11 @@
 package com.botifier.becs.graphics;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.graphics.images.Texture;
@@ -19,7 +22,7 @@ public class AutoBatcher {
 	/**
 	 * Batch Queue
 	 */
-	private ConcurrentHashMap<Texture, ConcurrentLinkedQueue<Image>> queue = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Texture, ArrayList<Image>> queue = new ConcurrentHashMap<>();
 
 	/**
 	 * Draws every image with texture as a batch
@@ -29,7 +32,7 @@ public class AutoBatcher {
 		//Render everything by texture
 		queue.entrySet().stream().forEach(entry -> {
 			Texture t = entry.getKey();
-			ConcurrentLinkedQueue<Image> images = entry.getValue();
+			ArrayList<Image> images = entry.getValue();
 			t.bind();
 			r.begin();
 			images.stream().filter(i -> i != null).forEach(i -> {
@@ -72,8 +75,12 @@ public class AutoBatcher {
 	 * @param z int to be
 	 */
 	public void add(Image i, Shape s, Color c, float z) {
-		queue.computeIfAbsent(i.getTexture(), t -> new ConcurrentLinkedQueue<>())
-			.add(createImage(i, s, c, z));
+		add(i, img -> {
+			img.setShape(s);
+			img.setColor(c);
+			img.setZ(z);
+			return img;
+		});
 	}
 
 	/**
@@ -100,7 +107,7 @@ public class AutoBatcher {
 	/**
 	 * Adds specified image to queue
 	 * @param i Image to add
-	 * @param x X location
+	 * @param x X location	
 	 * @param y Y location
 	 * @param width Image width
 	 * @param height Image height
@@ -121,45 +128,34 @@ public class AutoBatcher {
 	 * @param c Color to use
 	 */
 	public void add(Image i, float x, float y, float width, float height, float scale, Color c) {
-		queue.computeIfAbsent(i.getTexture(), k -> new ConcurrentLinkedQueue<Image>()).add(createImage(i, x, y, width, height, scale, c));
+		add(i, img -> {
+			img.setPosition(x, y);
+			img.setWidth(width);
+			img.setHeight(height);
+			img.setScale(scale);
+			img.setColor(c);
+			return img;
+		});
 	}
 
 	/**
-	 * Creates a copy Image with the specified parameters
-	 * @param i
-	 * @param s
-	 * @param c
-	 * @param z
-	 * @return
+	 * Adds specified image to queue
+	 * 
+	 * used like add(i, img -\> {
+	 * 		img.setShape(shape);
+	 * 		return img;
+	 * }
+	 * 
+	 * @param i Image to add
+	 * @param config Consumer\<Image\> Used to manipulate the output image 
 	 */
-	private Image createImage(Image i, Shape s, Color c, float z) {
-		Image build = new Image(i.getTexture());
-		build.setZ(z);
-		build.setShape(s);
-		build.setColor(c);
-		return build;
-	}
-	
-	/**
-	 * Creates a copy Image at a specified location and custom data
-	 *
-	 * @param i Image to use
-	 * @param x X location
-	 * @param y Y location
-	 * @param width Image width
-	 * @param height Image height
-	 * @param scale Width and height multiplier
-	 * @param c Color to use
-	 * @return Resulting image
-	 */
-	private Image createImage(Image i, float x, float y, float width, float height, float scale, Color c) {
-		Image build = new Image(i.getTexture());
-		build.setPosition(x, y);
-		build.setHeight(height);
-		build.setWidth(width);
-		build.setScale(scale);
-		build.setColor(c);
-		return build;
+	public void add(Image i, Function<Image, Image> config) {
+		Image build = new Image(i);
+		
+		if (config != null)
+			build = config.apply(build);
+		
+		queue.computeIfAbsent(i.getTexture(), k -> new ArrayList<Image>()).add(build);
 	}
 
 }

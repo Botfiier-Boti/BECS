@@ -2,11 +2,13 @@ package com.botifier.becs.entity.systems;
 
 import static com.botifier.becs.entity.EntityComponentManager.hasComponent;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,8 +29,8 @@ import com.botifier.becs.entity.systems.physics.PhysicsSystemExtension;
 import com.botifier.becs.util.CollisionUtil;
 import com.botifier.becs.util.Math2;
 import com.botifier.becs.util.ParameterizedRunnable;
-import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.SpatialPolygonHolder;
+import com.botifier.becs.util.maps.SpatialEntityMap;
 import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 import com.botifier.becs.util.shapes.Shape;
@@ -103,43 +105,44 @@ public class PhysicsSystem extends EntitySystem {
 		
 		if (!running.get())
 			return CompletableFuture.completedFuture(null);
-
-	    final SpatialEntityMap sem = Entity.spatialMap();
-	    
-		List<Entity> awakeEntities = sem.getAwake().stream()
-		        .map(Entity::getEntity)
+		
+		try (ExecutorService ex = Executors.newVirtualThreadPerTaskExecutor()){
+			final SpatialEntityMap sem = Entity.spatialMap();
+		    
+			List<Entity> awakeEntities = Arrays.stream(entities)
+			        .filter(e -> sem.isAwake(e))
+			        .collect(Collectors.toList());
+			
+			final int BATCH_SIZE = 1000; // Adjust based on your performance needs
+		    
+		    // Split entities into batches and process in parallel
+		    List<CompletableFuture<Void>> futures = IntStream.range(0, (awakeEntities.size() + BATCH_SIZE - 1) / BATCH_SIZE)
+		    	.parallel()
+		        .mapToObj(i -> {
+		            int startIndex = i * BATCH_SIZE;
+		            int endIndex = Math.min(startIndex + BATCH_SIZE, awakeEntities.size());
+		            return awakeEntities.subList(startIndex, endIndex);
+		        })
+		        .map(batch -> CompletableFuture.runAsync(() -> {
+		            if (!running.get()) return;
+		            
+		            List<Entity> batchMovedList = new ArrayList<>();
+		            for (Entity entity : batch) {
+		                updateEntity(entity, batchMovedList);
+		            }
+		            // Update spatial map for this batch immediately
+		            if (!batchMovedList.isEmpty()) {
+		                Entity.spatialMap().updateEntitiesInSequence(batchMovedList);
+		            }
+		        }, ex))
 		        .collect(Collectors.toList());
-		
-		final int BATCH_SIZE = 100; // Adjust based on your performance needs
-	    
-	    // Split entities into batches and process in parallel
-	    List<CompletableFuture<Void>> futures = IntStream.range(0, (awakeEntities.size() + BATCH_SIZE - 1) / BATCH_SIZE)
-	        .parallel()
-	        .mapToObj(i -> {
-	            int startIndex = i * BATCH_SIZE;
-	            int endIndex = Math.min(startIndex + BATCH_SIZE, awakeEntities.size());
-	            return awakeEntities.subList(startIndex, endIndex);
-	        })
-	        .map(batch -> CompletableFuture.runAsync(() -> {
-	            if (!running.get()) return;
-	            
-	            List<Entity> batchMovedList = new ArrayList<>();
-	            for (Entity entity : batch) {
-	                updateEntity(entity, batchMovedList);
-	            }
-	            // Update spatial map for this batch immediately
-	            if (!batchMovedList.isEmpty()) {
-	                Entity.spatialMap().updateEntitiesInSequence(batchMovedList);
-	            }
-	        }))
-	        .collect(Collectors.toList());
 
-		//Proceed to the next physics tick
-		physicsTick.incrementAndGet();
-		
-	    // Wait for all futures to complete
-	    return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
-		
+			//Proceed to the next physics tick
+			physicsTick.incrementAndGet();
+
+		    // Wait for all futures to complete
+		    return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+		}
 	}
 
 	/**
@@ -152,10 +155,16 @@ public class PhysicsSystem extends EntitySystem {
 		//Obtain the Position and Velocity components
 		EntityComponent<Vector2f> posComponent = e.getComponent("Position");
 		EntityComponent<Vector2f> velComponent = e.getComponent("Velocity");
-
+		
+		if (velComponent == null || posComponent == null) {
+			System.out.println("Somehow a component is missing.");
+			System.out.println(e.getComponents());
+			return;
+		}
+		
 		//Obtain the data from the components
 		Vector2f p = posComponent.get();
-		Vector2f v = velComponent.get();
+		Vector2f v = new Vector2f(velComponent.get());
 
 		//Perform pre ticks from the physics extenstions
 		for (PhysicsSystemExtension pse : pses) {
@@ -164,7 +173,7 @@ public class PhysicsSystem extends EntitySystem {
 
 		//Checks if the Entity is both Collidable and has a CollisionShape
 		EntityComponent<Shape> shaComponent = e.getComponent("CollisionShape");
-		boolean collidable = hasComponent(e, "Collidable");
+		boolean collidable = e.getComponentValueOrDefault("Collidable", false);
 		if (shaComponent != null && collidable) {
 			//Obtains the entity's shape
 			Shape s = shaComponent.get();
@@ -179,13 +188,16 @@ public class PhysicsSystem extends EntitySystem {
 			
 			//If there is at least 1 entity perform collision handling and then update velocity
 			if (entities.length >= 1) 
-				velComponent.set(Math2.round(new Vector2f(v).add(handleCollision(e, s, collideCheck, entities)), 2));
+				v.set(Math2.round(v.add(handleCollision(e, s, collideCheck, entities)), 2));
+		} else {
+			Vector2f accel = e.getComponentValueOrDefault("Acceleration", new Vector2f());
+			v.set(Math2.round(new Vector2f(v).add(accel), 2));
 		}
 
-		boolean moved = handleNormalMovment(e);
+		boolean moved = handleNormalMovment(e, v);
 
 		//Updates the collision shape of entities that have them
-		if (shaComponent != null && collidable) {
+		if (shaComponent != null && moved) {
 			//Gets the entity's shape component
 			//Tracking if the shape has been updated
 			boolean shapeUpdated = false;
@@ -256,7 +268,7 @@ public class PhysicsSystem extends EntitySystem {
 		}
 
 		//Don't do anything if the entity isn't moving.
-		if (v.length() == 0) {
+		if (v.length() == 0 && fullVelAdj.length() < 0) {
 			return (Vector2f) v;
 		}
 
@@ -264,7 +276,7 @@ public class PhysicsSystem extends EntitySystem {
 		Polygon move = s.toPolygon();
 
 		//Filter out all invalid targets from the entities array
-		entities = Arrays.stream(entities).parallel().filter(e2 -> validCollisionEntity(e, e2)).toArray(Entity[]::new);
+		entities = Arrays.stream(entities).filter(e2 -> validCollisionEntity(e, e2)).toArray(Entity[]::new);
 		
 		//Sort the entities array by distance from the entity
 		Arrays.sort(entities, (a, b) -> {
@@ -274,8 +286,8 @@ public class PhysicsSystem extends EntitySystem {
 			Vector2f posA = posAComponent.get();
 			Vector2f posB = posBComponent.get();
 
-			float distA = p.distance(posA);
-			float distB = p.distance(posB);
+			float distA = p.distanceSquared(posA);
+			float distB = p.distanceSquared(posB);
 
 			return Float.compare(distA, distB);
 		});
@@ -294,16 +306,35 @@ public class PhysicsSystem extends EntitySystem {
 			Shape s2 = sha2Component.get();
 
 			//Check if there is an intersection and that the primary entity is moving
-			CollisionUtil.PolygonOutput pOutput = collideCheck.intersectsSAT(s2.toPolygon());
+			CollisionUtil.PolygonOutput pOutput = s2.toPolygon().intersectsSAT(collideCheck);
 			if (pOutput != null) {
+				float dist = s2.closestTo(p).distance(p);
+				
+				if (v.length() > dist) {
+					Vector2f use = new Vector2f(v).add(fullVelAdj);
+					
+					fullVelAdj.sub(use.sub(use.normalize(dist, new Vector2f()), new Vector2f()));
+					
+					
+					move = s.toPolygon().move(new Vector2f(velComponent.get()).add(fullVelAdj));
+					//Update the predictive shape
+					collideCheck = s.toPolygon().mergeNoRepeat(move);
+					pOutput = s2.toPolygon().intersectsSAT(collideCheck);
+					
+					if (pOutput == null)
+						continue;
+				}
+				
 				Vector2f n = pOutput.getNormal().mul(pOutput.getDepth());
 				velAdj.sub(n);
 				performInteraction(e, e2);
 
 				//Only actually adjusts if it is solid the magnitude of the modification is not zero
-				if (hasComponent(e, "Solid") && hasComponent(e2, "Solid") && velAdj.length() > 0.001f) {
+				if (e2.getComponentValueOrDefault("Solid", false) &&
+					velAdj.length() > 0.001f) {
+					
 					//Add the adjustment to the full adjustment
-					fullVelAdj.add(velAdj);
+					fullVelAdj.add(velAdj.negate());
 
 					//Calculate magnitudes
 					float mag = v.length();
@@ -453,17 +484,14 @@ public class PhysicsSystem extends EntitySystem {
 	 * Finalizes normal movement
 	 * @param e Entity to finalize
 	 */
-	private boolean handleNormalMovment(Entity e) {
+	private boolean handleNormalMovment(Entity e, Vector2f v) {
 		//Obtains the entity's position and velocity components
 		EntityComponent<Vector2f> posComponent = e.getComponent("Position");
 		EntityComponent<Vector2f> velComponent = e.getComponent("Velocity");
 
 		//Obtains the values of the position and velocity components
 		Vector2fc cP = posComponent.get();
-		Vector2fc cV = velComponent.get();
 
-		//Creates a copy of the components
-		Vector2f v = new Vector2f(cV);
 		Vector2f p = new Vector2f(cP);
 		
 		//Sets velocity to zero if it has a magnitude below 0.05f
@@ -477,7 +505,7 @@ public class PhysicsSystem extends EntitySystem {
 		}
 
 		//Put the entity to sleep if it isn't moving
-		if (v.length() == 0) {
+		if (v.length() == 0 && !e.hasComponent("acceleration")) {
 			Entity.spatialMap().sleepEntity(e);
 			return false;
 		}

@@ -6,18 +6,18 @@
 	<parent>
 		<groupId>BECS</groupId>
 		<artifactId>BECS</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
+		<version>0.0.2-SNAPSHOT</version>
 	</parent>
 	<dependencies>
 		<dependency>
 			<groupId>BECS</groupId>
 			<artifactId>BECS-Assets</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.2-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>BECS</groupId>
 			<artifactId>BECS-Events</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>0.0.2-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 	<artifactId>BECS-Core</artifactId>

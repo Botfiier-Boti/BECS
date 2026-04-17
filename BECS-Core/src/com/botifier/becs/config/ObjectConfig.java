@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * AI assisted with Claude AI
  */
-public class ObjectConfig implements IConfig {
+public class ObjectConfig implements Config {
 	/**
 	 * Map of config values
 	 */
@@ -262,7 +262,7 @@ public class ObjectConfig implements IConfig {
     }
 
     @Override
-    public ObjectConfig readFileOrDefault(String file, IConfig defaultConfig) {
+    public ObjectConfig readFileOrDefault(String file, Config defaultConfig) {
         if (!(defaultConfig instanceof ObjectConfig)) {
             throw new IllegalArgumentException(
                 "Config of type " + defaultConfig.getClass().getName() + 

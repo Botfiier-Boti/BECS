@@ -17,6 +17,7 @@ import org.joml.Intersectionf;
 import org.joml.Matrix2f;
 import org.joml.Matrix2fc;
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
@@ -107,10 +108,25 @@ public class Polygon extends Shape {
 	}
 
 	@Override
-	public Vector2f closestTo(Vector2f v) {
+	public Vector2f closestTo(Vector2fc v) {
+		
+		 Vector2f closest = null;
+		 float minDist2 = Float.MAX_VALUE;
+		 for (Line edge : getEdges()) {
+			 Vector2f candidate = edge.closestTo(v); // uses Line.closestTo(Vector2fc)
+			 float dist2 = candidate.distanceSquared(v);
+			 if (dist2 < minDist2) {
+				 minDist2 = dist2;
+				 closest = candidate;
+		     }
+		 }
+
+		 return closest;
+		    
+		/*
 		return Arrays.stream(points)
 				.min(Comparator.comparingDouble(p -> p.distance(v)))
-				.orElse(points[0]);
+				.orElse(points[0]);*/
 	}
 
 	@Override
