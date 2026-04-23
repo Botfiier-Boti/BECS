@@ -13,8 +13,8 @@
 		<lwjgl.version>3.4.1</lwjgl.version>
 		<joml.version>1.10.7</joml.version>
 		<joml-primitives.version>1.10.0</joml-primitives.version>
-    	<maven.compiler.source>24</maven.compiler.source>
-    	<maven.compiler.target>24</maven.compiler.target>
+    	<maven.compiler.source>25</maven.compiler.source>
+    	<maven.compiler.target>25</maven.compiler.target>
 	</properties>
 	<profiles>
 		<profile>
@@ -294,7 +294,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>17</release>
+					<release>25</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>com.google.auto.service</groupId>
