@@ -154,6 +154,8 @@ public class Camera {
 		if (this.cache == null || changed) {
 			this.cache = this.getSpatialEntityMap().gridifyPolygon(camera.toPolygon());
 			this.visibleCache = getSpatialEntityMap().getEntitiesIn(null, false, cache.getHashes());
+			//Make sure the target is always visible
+			this.visibleCache.add(target);
 			changed = false;
 		}
 		
