@@ -144,6 +144,7 @@ public class ArrowKeyControlsSystem extends EntitySystem {
 		//If toAdd has any movement update the velocity
 		if (toAdd.length() > 0) {
 			Vector2f hold = new Vector2f(v).add(toAdd);
+			hold = Math2.round(hold, 2);
 			velocityComponent.set(hold);
 		}
 		
