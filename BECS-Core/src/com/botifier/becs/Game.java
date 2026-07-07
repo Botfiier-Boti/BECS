@@ -1022,7 +1022,6 @@ public abstract class Game {
 				if (g == null) return;
 
 				tick();
-				eventManager.processEvents();
 			}catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -1037,6 +1036,8 @@ public abstract class Game {
 				
 				system.apply(entities).join(); // Applies the system to all of those entities and waits for futures to complete
 			}
+
+			eventManager.processEvents();
 			
 			t.updateUPS(); // Updates UPS counter (Updates Per Second)
 			
