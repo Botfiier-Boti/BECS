@@ -45,3 +45,4 @@ replay_pid*
 /bin/
 /.metadata
 BECS-Assets/.factorypath
+BECS-Tests/physics-config.json
