@@ -15,7 +15,6 @@ import static org.lwjgl.opengl.GL11.glClearColor;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +40,6 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.joml.Vector2f;
-import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWCharCallback;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
@@ -52,7 +50,6 @@ import org.lwjgl.glfw.GLFWWindowCloseCallback;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLUtil;
-import org.lwjgl.system.MemoryStack;
 
 import com.botifier.becs.config.Config;
 import com.botifier.becs.entity.Entity;
@@ -67,6 +64,7 @@ import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
 import com.botifier.becs.util.events.EventManager;
 import com.botifier.becs.util.glfw.GLFWWindow;
+import com.botifier.becs.util.memory.HighSpeedGate;
 import com.botifier.becs.util.glfw.GLFWInput;
 import com.botifier.becs.util.glfw.GLFWGameTimer;
 import com.botifier.becs.util.shapes.RotatableRectangle;
@@ -95,6 +93,12 @@ public abstract class Game {
 	 */
 	private static Game current;
 
+	
+	/*
+	 * A high speed atomic gate
+	 */
+	private static volatile HighSpeedGate gate = new HighSpeedGate();
+	
 	/**
 	 * Input controller
 	 */
@@ -171,6 +175,7 @@ public abstract class Game {
 	/**
 	 * Whether or not the locks should be used
 	 */
+	@Deprecated
 	private final boolean noLock;
 
 	/**
@@ -232,6 +237,7 @@ public abstract class Game {
 	/**
 	 * Lock for threads. Used if noLock is false.
 	 */
+	@Deprecated
 	private ReentrantLock l = new ReentrantLock();
 
 	/**
@@ -267,8 +273,8 @@ public abstract class Game {
 	 * @param height    Window height
 	 * @param vsync     Enable/disable vsync
 	 * @param resizable Enable/disable window resizing
-	 * @param noLock    Sets whether or not locks should be used; Causes visual
-	 *                  artifacts
+	 * @param noLock    Deprecated - Sets whether or not locks should be used; Causes visual
+	 *                  artifacts 
 	 */
 	public Game(String title, int width, int height, boolean vsync, boolean resizable, boolean noLock) {
 		this.title = title;
@@ -298,12 +304,10 @@ public abstract class Game {
 	 * Runs the game
 	 */
 	public void run() {
-		l.lock();
-		try {
+		try (HighSpeedGate g = gate.tryUseClosable()) {
+			if (g == null) return;
 			initialize();
 			eventManager.processEvents();
-		} finally {
-			l.unlock();
 		}
 		procLoop();
 		cleanup();
@@ -611,7 +615,7 @@ public abstract class Game {
 	 * Adds a config to use
 	 * 
 	 * @param name   String Name of the config
-	 * @param config IConfig To use
+	 * @param config Config To use
 	 */
 	public void addConfig(String name, Config config) {
 		configs.put(name.toLowerCase(), config);
@@ -621,7 +625,7 @@ public abstract class Game {
 	 * Removes config
 	 * 
 	 * @param name String Name of the config
-	 * @return IConfig The dropped config
+	 * @return Config The dropped config
 	 */
 	public Config dropConfig(String name) {
 		return configs.remove(name.toLowerCase());
@@ -1003,38 +1007,26 @@ public abstract class Game {
 	 */
 	private class UpdateRunnable implements Runnable {
 		
+		
 		@Override
 		public void run() {
 			if (!running.get()) {
 				return;
 			}
-			final ReentrantLock lock = l;
 			
 			Thread.currentThread().setName("Update Thread");
 			t.update(); // Update the timer
 			delta.set(t.getDelta()); // set delta
 			accumulator += delta.get();
-			try {
-				if (!noLock && lock.tryLock(100, TimeUnit.MILLISECONDS)) {
-					try {
-						tick();
-						eventManager.processEvents();
-					} finally {
-						lock.unlock(); // Unlocks if locking is enabled
-					}
-				} else {
-					tick();
-					eventManager.processEvents();
-				}
-			} catch (InterruptedException ie) {
-				//Don't really care if the lock is interrupted
-				if (debug.get())
-					ie.printStackTrace();
-			} catch (Exception e) {
+			try (HighSpeedGate g = gate.tryUseClosable()) {
+				if (g == null) return;
+
+				tick();
+				eventManager.processEvents();
+			}catch (Exception e) {
 				e.printStackTrace();
-			} finally {
-				ticksAlive.incrementAndGet(); // Add to the tick tracker
 			}
+			
 		}
 		
 		private void tick() {
@@ -1042,9 +1034,6 @@ public abstract class Game {
 			
 			for (EntitySystem system : systems) {
 				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); // Obtains all valid entities
-				
-				if (entities.length == 0)
-					System.out.println("Somethings wrong");
 				
 				system.apply(entities).join(); // Applies the system to all of those entities and waits for futures to complete
 			}
@@ -1061,10 +1050,13 @@ public abstract class Game {
 		
 		@Override
 		public void run() {
-			if (!running.get()) {
+			if (!running.get()) 
+				return;
+			if (gate.isBusy()) {
+				LockSupport.parkNanos(1L); //Park for a moment to avoid overwhelming the core the render thread is on
 				return;
 			}
-			final ReentrantLock lock = l;
+			
 			long currentContext = GLFW.glfwGetCurrentContext();
 			if (currentContext != window.getId())
 				glfwMakeContextCurrent(window.getId()); // Obtains context
@@ -1072,19 +1064,7 @@ public abstract class Game {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
 
 			try {
-				if (!noLock && lock.tryLock(100, TimeUnit.MILLISECONDS)) {
-					try {
-						//eventManager.processEvents();
-						render();
-					} finally {
-						lock.unlock();
-					}
-				} else {
-					eventManager.processEvents();
-					render();
-				}
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+				render();
 			} finally {
 				if (getRenderer().hasRendered()) 
 					glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
