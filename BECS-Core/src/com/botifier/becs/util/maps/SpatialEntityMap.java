@@ -368,15 +368,15 @@ public class SpatialEntityMap {
 	 * @param p Polygon To check
 	 * @return Set\<Entity\> of all entities in the overlapping region
 	 */
-	public Set<Entity> getEntitiesIn(Polygon p) {
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p) {
 		return getEntitiesIn(p, false);
 	}
 
-	public Set<Entity> getEntitiesIn(Polygon p, boolean collide) {
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p, boolean collide) {
 		return getEntitiesIn(p, collide, null);
 	}
 
-	public Set<Entity> getEntitiesIn(Polygon p, boolean collide, Set<Vector2Lc> outputHashes) {
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p, boolean collide, @Nullable Set<Vector2Lc> outputHashes) {
 		return getEntitiesIn(p, 
 				             Sets.newConcurrentHashSet(),
 							 collide ?  e -> e.hasComponent("Collidable") : null, 
