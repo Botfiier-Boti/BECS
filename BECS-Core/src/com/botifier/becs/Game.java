@@ -62,6 +62,7 @@ import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.sound.SoundListener;
 import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
+import com.botifier.becs.util.ResourceManager;
 import com.botifier.becs.util.events.EventManager;
 import com.botifier.becs.util.glfw.GLFWWindow;
 import com.botifier.becs.util.memory.HighSpeedGate;
@@ -128,6 +129,11 @@ public abstract class Game {
 	 * Event manager
 	 */
 	private EventManager eventManager;
+	
+	/**
+	 * Resource manager
+	 */
+	private ResourceManager resourceManager;
 
 	/**
 	 * Size Callback Updates width and height when the window is resized
@@ -946,6 +952,17 @@ public abstract class Game {
 	 */
 	public EventManager getEventManager() {
 		return eventManager;
+	}
+	
+	/**
+	 * Returns the resource manager
+	 * 
+	 * lazy loaded
+	 * 
+	 * @return ResourceManager
+	 */
+	public ResourceManager getResourceManager() {
+		return resourceManager == null ? resourceManager = new ResourceManager() : resourceManager;
 	}
 
 	/**

@@ -87,10 +87,12 @@ public class Camera {
 		this.game = g;
 		this.camera = new RotatableRectangle(center, width, height);
 		
-		ShaderProgram shp = ResourceManager.getOrPutShaderProgram("CameraShaderProgram", s -> {
+		final ResourceManager rm = g.getResourceManager();
+		
+		ShaderProgram shp = rm.getOrPutShaderProgram("CameraShaderProgram", s -> {
 			ShaderProgram sp = new ShaderProgram();
-			Shader v = ResourceManager.loadOrGetShader("CameraVertex", GL_VERTEX_SHADER, "framebuffer.vert");
-			Shader f = ResourceManager.loadOrGetShader("CameraFragment", GL_FRAGMENT_SHADER, "basic_framebuffer.frag");
+			Shader v = rm.loadOrGetShader(s+"_CameraVertex", GL_VERTEX_SHADER, "framebuffer.vert");
+			Shader f = rm.loadOrGetShader(s+"_CameraFragment", GL_FRAGMENT_SHADER, "basic_framebuffer.frag");
 			
 			sp.attachShader(v);
 			sp.attachShader(f);

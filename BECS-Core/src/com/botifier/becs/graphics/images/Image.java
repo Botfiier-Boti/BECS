@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
+import com.botifier.becs.Game;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.shader.ShaderProgram;
 import com.botifier.becs.util.ResourceManager;
@@ -185,7 +186,7 @@ public class Image {
 	 * @param y float Y
 	 */
 	public void draw(Renderer renderer, float x, float y) {
-		draw(renderer,x,y, z, c, ResourceManager.getShaderProgram(sp));
+		draw(renderer,x,y, z, c, Game.getCurrent().getResourceManager().getShaderProgram(sp));
 	}
 
 	/**
@@ -197,7 +198,7 @@ public class Image {
 	 * @param c Color Color filter
 	 */
 	public void draw(Renderer renderer, float x, float y, float z, Color c) {
-		draw(renderer,x,y, z,c, ResourceManager.getShaderProgram(sp));
+		draw(renderer,x,y, z,c, Game.getCurrent().getResourceManager().getShaderProgram(sp));
 	}
 
 	/**
@@ -466,7 +467,7 @@ public class Image {
 	 */
 	public ShaderProgram getShaderProgram() {
 		if (buffer == null && sp != null)
-			buffer = ResourceManager.getShaderProgram(sp);
+			buffer = Game.getCurrent().getResourceManager().getShaderProgram(sp);
 		return buffer;
 	}
 

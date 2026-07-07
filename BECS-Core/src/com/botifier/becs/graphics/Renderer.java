@@ -169,6 +169,11 @@ public class Renderer {
 	 * The automatic batcher
 	 */
 	private AutoBatcher batcher;
+	
+	/**
+	 * The game this was renderer was initialized on
+	 */
+	private Game g;
 
 	/**
 	 * Debug/Default font
@@ -214,6 +219,7 @@ public class Renderer {
 	 * @param window Game To use
 	 */
 	public void init(Game window) {
+		g = window;
 		//Setup the auto batcher
 		batcher = new AutoBatcher();
 		//Setup the buffers
@@ -237,7 +243,7 @@ public class Renderer {
 	 * @param fbo FBO fbo to use
 	 * @param alpha float Alpha value, for interpolation
 	 */
-	public void renderAllToFBO(Game g, FBO fbo, float alpha) {
+	public void renderAllToFBO(FBO fbo, float alpha) {
 		//Binds the FBO
 		fbo.bind();
 		//Clears the depth and color buffers
@@ -1297,6 +1303,15 @@ public class Renderer {
 	 */
 	public VBO getEBO() {
 		return ebo;
+	}
+	
+	/**
+	 * Returns the game this was initialized on
+	 * 
+	 * @return Game
+	 */
+	public Game getGame() {
+		return g;
 	}
 
 	/**
