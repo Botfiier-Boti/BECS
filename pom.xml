@@ -11,7 +11,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<lwjgl.version>3.4.1</lwjgl.version>
-		<joml.version>1.10.7</joml.version>
+		<joml.version>1.10.8</joml.version>
 		<joml-primitives.version>1.10.0</joml-primitives.version>
     	<maven.compiler.source>25</maven.compiler.source>
     	<maven.compiler.target>25</maven.compiler.target>
