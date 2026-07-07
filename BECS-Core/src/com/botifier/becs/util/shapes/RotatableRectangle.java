@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
+import javax.annotation.Nonnull;
+
 import org.joml.Math;
 import org.joml.Vector2f;
 import org.joml.Vector2fc;
@@ -16,6 +18,9 @@ import com.botifier.becs.util.Math2;
 
 /**
  * RotatableRectangle
+ * 
+ * NOTE: LocalSpace is local to the Rectangle, unrotated.
+ *       RealSpace is the point in the world
  * 
  * TODO: Document this
  * TODO: Optimize this
@@ -53,6 +58,12 @@ public class RotatableRectangle extends Shape {
 		super(in);
 	}
 
+	/**
+	 * Initializes the rotatable rectangle
+	 * @param width float Width of the rectangle
+	 * @param height float Height of the rectangle 
+	 * @param rotation float Angle of the rectangle
+	 */
 	private void init(float width, float height, float rotation) {
 		this.width = width/2;
 		this.height = height/2;
@@ -80,6 +91,9 @@ public class RotatableRectangle extends Shape {
 		calcRectangle();
 	}
 
+	/**
+	 * Recalculates the rotatable rectangles points
+	 */
 	public void calcRectangle() {
 		tr = Math2.rotatePoint(new Vector2f(width, height), angle);
 		tl = Math2.rotatePoint(new Vector2f(-width, height), angle);
@@ -129,6 +143,18 @@ public class RotatableRectangle extends Shape {
 
 	}
 	
+	/**
+	 * Draws a portion of the texture within the supplied image
+	 * uses the image's Z position
+	 * 
+	 * @param r Renderer Renderer to use
+	 * @param i Image Image to use
+	 * @param c Color Color to use
+	 * @param tx float X coordinate inside the texture
+	 * @param ty float Y coordinate inside the texture
+	 * @param tWidth float Width of the subimage
+	 * @param tHeight float Height of the subimage
+	 */
 	public void drawSubImage(Renderer r, Image i, Color c, float tx, float ty, float tWidth, float tHeight) {
 		i.bind();
 		Texture t = i.getTexture();
@@ -175,6 +201,7 @@ public class RotatableRectangle extends Shape {
 		Vector2f projCorn = new Vector2f(div * axis.x, div*axis.y);
 		return (int) projCorn.dot(axis);
 	}
+	
 	// also based on https://gist.github.com/jackmott/021bb1bd1135df71c389b42b8b44cc30
 	private boolean isAxisCollision(RotatableRectangle rr, Vector2f axis) {
 		int[] tScalar = {
@@ -211,6 +238,7 @@ public class RotatableRectangle extends Shape {
 		super.setAngle(rotation);
 		calcRectangle();
 	}
+	
 
 	public float getWidth() {
 		return width * 2;
@@ -220,22 +248,41 @@ public class RotatableRectangle extends Shape {
 		return height * 2;
 	}
 
+	/**
+	 * Returns the top right corner in RealSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getTrueTopRight() {
 		return getTrueCorner(true, true);
 	}
-
+	/**
+	 * Returns the top left corner in RealSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getTrueTopLeft() {
 		return getTrueCorner(false, true);
 	}
-
+	/**
+	 * Returns the bottom right corner in RealSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getTrueBottomRight() {
 		return getTrueCorner(true, false);
 	}
-
+	/**
+	 * Returns the bottom left corner in RealSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getTrueBottomLeft() {
 		return getTrueCorner(false, false);
 	}
 
+	/**
+	 * Returns the true corner in RealSpace
+	 * @param right boolean If its on the right or not
+	 * @param top boolean if its on the top or not
+	 * @return Vector2f The position
+	 */
 	private Vector2f getTrueCorner(boolean right, boolean top) {
 		float x = right ? Math2.max(tr.x, tl.x, br.x, bl.x) : Math2.min(tr.x, tl.x, br.x, bl.x);
 		float y = top ? Math2.max(tr.y, tl.y, br.y, bl.y) : Math2.min(tr.y, tl.y, br.y, bl.y);
@@ -243,18 +290,31 @@ public class RotatableRectangle extends Shape {
 		return new Vector2f(center.x + x,  center.y + y);
 	}
 
+	/**
+	 * Returns the top right corner in LocalSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getTopRight() {
 		return new Vector2f(center.x + tr.x, center.y + tr.y);
 	}
-
+	/**
+	 * Returns the top left corner in LocalSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getTopLeft() {
 		return new Vector2f(center.x + tl.x, center.y + tl.y);
 	}
-
+	/**
+	 * Returns the bottom right corner in LocalSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getBottomRight() {
 		return new Vector2f(center.x + br.x, center.y + br.y);
 	}
-
+	/**
+	 * Returns the bottom left corner in LocalSpace
+	 * @return Vector2f The corner
+	 */
 	public Vector2f getBottomLeft() {
 		return new Vector2f(center.x + bl.x, center.y + bl.y);
 	}
@@ -281,78 +341,88 @@ public class RotatableRectangle extends Shape {
 	}
 
 	//https://stackoverflow.com/questions/4061576/finding-points-on-a-rectangle-at-a-given-angle
-	private Vector2f closestToVec(Vector2f v) {
-
-		/*Vector2f l = new Vector2f(getTrueTopLeft().x, center.y);
-		Vector2f r = new Vector2f(getTrueTopRight().x, center.y);
-		Vector2f t = new Vector2f(center.x, getTrueTopLeft().y);
-		Vector2f b = new Vector2f(center.x, getTrueBottomLeft().y);
-
-		float lD = v.distance(l);
-		float rD = v.distance(r);
-		float bD = v.distance(t);
-		float tD = v.distance(b);
-
-		float min = Math2.min(lD, rD, bD, tD);*/
-		Vector2f vec = new Vector2f();
+	private Vector2f closestToVec(final Vector2f v) {
+		//Handle the basic case quickly
 		if (angle % 90 == 0) {
-			Vector2f v2 = new Vector2f(v);
-			v2.sub(center);
+			Vector2f v2 = v.sub(center, new Vector2f());
 
-			vec.x = Math.max(tl.x, Math.min(v2.x, br.x));
-			vec.y = Math.max(bl.y, Math.min(v2.y, tr.y));
-
-			vec.add(center);
-		} else {
-
-			float angle = Math2.calcAngle(center, v) - getRotation();
-			float width = this.width;
-			float height = this.height;
-			float rAtan = Math.atan2(height, width);
-			int reg = 0;
-
-			if (angle > -rAtan &&  angle <= rAtan) {
-				reg = 1;
-			} else if (angle > rAtan && angle% Math.PI <= (Math.PI - rAtan) ) {
-				reg = 2;
-			} else if (angle > Math.PI - rAtan || angle <= -(Math.PI - rAtan)) {
-				reg = 3;
-			} else {
-				reg = 4;
-			}
-
-
-			vec = Math2.rotatePoint(calcRegionVec(angle, reg, vec), getRotation());//getRotation());
-			vec.add(center);
-
+			final float x = Math.max(tl.x, Math.min(v2.x, br.x)) + center.x;
+			final float y = Math.max(bl.y, Math.min(v2.y, tr.y)) + center.y;
+			
+			return new Vector2f(x, y);
 		}
-		return vec;
+		
+		
+		final float angle = Math2.calcAngle(center, v) - getRotation();
+		final float rAtan = Math.atan2(height, width);
+		
+		final int reg;
+		
+		if (angle > -rAtan &&  angle <= rAtan) {
+			reg = 0;
+		} else if (angle > rAtan && angle% Math.PI <= (Math.PI - rAtan) ) {
+			reg = 1;
+		} else if (angle > Math.PI - rAtan || angle <= -(Math.PI - rAtan)) {
+			reg = 2;
+		} else {
+			reg = 3;
+		}
+
+		
+		final Vector2f vec = calcRegionVec(angle, reg, new Vector2f());
+		return Math2.rotatePoint(vec, getRotation()).add(center);
 
 	}
 
-	public Vector2f calcRegionVec(float angle, int reg, Vector2f vec) {
+	/**
+	 * Returns a copy of the supplied vector modified to be in the correct region
+	 * 
+	 * 
+	 * region ids| direction | range
+	 * 0         | Right     | -arctan(b/a) -> arctan(b/a)
+	 * 1         | Up        | arctan(b/a) -> pi-arctan(b/a)
+	 * 2         | Left      | pi-arctan(b/a) -> pi+arctan(b/a)
+	 * 3         | Down      | pi+arctan(b/a) -> -arctan(b/a)
+	 * 
+	 * defaults to region 0
+	 * 
+	 * https://stackoverflow.com/questions/4061576/finding-points-on-a-rectangle-at-a-given-angle
+	 * 
+	 * @param angle float The angle in which the rectangle is rotated
+	 * @param reg int The region the vector exists in
+	 * @param vec Vector2fc The vector to use
+	 * @return Vector2f The modified vector
+	 */
+	 public Vector2f calcRegionVec(float angle, int reg, @Nonnull Vector2fc vec) {
+		Vector2f v = new Vector2f(vec);
 		switch (reg) {
+			default:
+			case 0:
+				v.x += height;
+				v.y += height * Math.tan(angle);
+				break;
 			case 1:
-				vec.x += height;
-				vec.y += height * Math.tan(angle);
+				v.x += width / Math.tan(angle);
+				v.y += width;
 				break;
 			case 2:
-				vec.x += width / Math.tan(angle);
-				vec.y += width;
+				v.x -= height;
+				v.y -= height * Math.tan(angle);
 				break;
 			case 3:
-				vec.x -= height;
-				vec.y -= height * Math.tan(angle);
-				break;
-			case 4:
-				vec.x -= width / Math.tan(angle);
-				vec.y -= width;
+				v.x -= width / Math.tan(angle);
+				v.y -= width;
 				break;
 		}
-		return vec;
+		return v;
 	}
 
 
+	/**
+	 * Finds the closest point to the other Rotatable Rectangle
+	 * @param rr RotatableRectangle To check
+	 * @return Vector2f The closest point
+	 */
 	public Vector2f closestTo(RotatableRectangle rr) {
 		Vector2f[] points = {
 			closestToVec(rr.getBottomLeft()),
@@ -392,6 +462,11 @@ public class RotatableRectangle extends Shape {
 		return closestTo(new RotatableRectangle(new Vector2f(s.getCenter()), s.getDimensions().x, s.getDimensions().y));
 	}
 
+	/**
+	 * Returns the distance between the center of this Rotatable Rectangle and another
+	 * @param rr RotatableRectangle To check
+	 * @return float The distance
+	 */
 	public float distance(RotatableRectangle rr) {
 		return distance(rr.getCenter());
 	}
@@ -402,10 +477,16 @@ public class RotatableRectangle extends Shape {
 		return Polygon.createPolygon(getTopRight(), getTopLeft(), getBottomLeft(), getBottomRight());
 	}
 
-	public float distance(Vector2f pos) {
+	/**
+	 * Returns the distance between this center and the supplied position
+	 * @param pos Vector2fc To check
+	 * @return float The distance
+	 */
+	public float distance(Vector2fc pos) {
 		return getCenter().distance(pos);
 	}
 
+	
 	//https://gist.github.com/jackmott/021bb1bd1135df71c389b42b8b44cc30
 	public boolean intersects(RotatableRectangle rr) {
 		Vector2f[] ax = {

@@ -127,7 +127,7 @@ public class Camera {
 		r.setCameraCenter(new Vector2f(oldCenter));
 		oldCenter = null;
 		//Invalidate the cache so that things moving into frame aren't missed
-		changed = true;
+		invalidateCache();
 	}
 	
 	/**
@@ -169,6 +169,13 @@ public class Camera {
 	}
 	
 	/**
+	 * Manually invalidate the entity cache
+	 */
+	public void invalidateCache() {
+		this.changed = true;
+	}
+	
+	/**
 	 * Starts following the target entity
 	 * Unfollows the last one if valid
 	 * @param e Entity To follow
@@ -192,6 +199,7 @@ public class Camera {
 		this.setCenter(e.getComponentValueOrDefault("Position", new Vector2f()));
 		this.cl = new CameraListener(this, e.getUUID());
 		this.game.getEventManager().registerListener(cl);
+		invalidateCache();
 		
 	}
 	
@@ -212,7 +220,7 @@ public class Camera {
 			throw new IllegalArgumentException("Center cannot be null");
 		if (!center.isFinite())
 			throw new IllegalArgumentException("Center cannot be either NaN or Infinite");
-		this.changed = true;
+		invalidateCache();
 		this.camera.setCenter(center);
 	}
 	
@@ -224,7 +232,7 @@ public class Camera {
 	public void setWidth(float width) {
 		if (width <= 0)
 			throw new IllegalArgumentException("Width cannot be zero or less");
-		this.changed = true;
+		invalidateCache();
 		this.camera.setWidth(width);
 
 		this.cameraBuffer.resize((int) this.camera.getWidth(), (int) this.camera.getHeight());
@@ -238,7 +246,7 @@ public class Camera {
 	public void setHeight(float height) {
 		if (height <= 0)
 			throw new IllegalArgumentException("Height cannot be zero or less.");
-		this.changed = true;
+		invalidateCache();
 		this.camera.setHeight(height);
 		this.cameraBuffer.resize((int) this.camera.getWidth(), (int) this.camera.getHeight());
 	}

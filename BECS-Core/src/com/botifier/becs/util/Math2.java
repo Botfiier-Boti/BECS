@@ -219,7 +219,7 @@ public class Math2 {
 		return (Math.abs(c-a) < Math.abs(c-b)) ? a : b;
 	}
 
-	public static Vector2f round(Vector2f v, int dec) {
+	public static Vector2f round(final Vector2f v, final int dec) {
 		Vector2f n = new Vector2f();
 		return n.set(round(v.x, dec), round(v.y, dec));
 	}
@@ -233,9 +233,10 @@ public class Math2 {
 	 * @param dec int Number of decimals
 	 * @return float rounded number
 	 */
-	public static float round(float f, int dec) {
-		float divisor =  (float) java.lang.Math.pow(10, dec);
-		int value = (int) (f * divisor);
+	public static float round(final float f, final int dec) {
+		final float divisor =  (float) java.lang.Math.pow(10, dec);
+		final int value = Math.round(f * divisor);
+		
 		return value / divisor;
 	}
 	/**
@@ -506,9 +507,22 @@ public class Math2 {
 		return min;
 	}
 	
-	public static int compareVectorsByAngle(Vector2f v1, Vector2f v2, Vector2f center) {
-		double angle1 = Math.atan2(v1.y - center.y, v1.x - center.x);
-		double angle2 = Math.atan2(v2.y - center.y, v2.x - center.x);
+	/**
+	 * Compares vectors by their angle from the supplied origin
+	 * 
+	 * used to wind vector arrays clockwise
+	 * 
+	 * if the angles are equal, they are compared by distance
+	 * if the angles are unequal they are compared to themselves
+	 * 
+	 * @param v1 Vector2f First vector
+	 * @param v2 Vector2f Second vector
+	 * @param center Vector2f Origin vector
+	 * @return int Comparison output, uses Double.compare 
+	 */
+	public static int compareVectorsByAngle(Vector2fc v1, Vector2fc v2, Vector2fc center) {
+		double angle1 = Math.atan2(v1.y() - center.y(), v1.x() - center.x());
+		double angle2 = Math.atan2(v2.y() - center.y(), v2.x() - center.x());
 
 		angle1 = round(angle1, 6);
 		angle2 = round(angle2, 6);
@@ -523,7 +537,7 @@ public class Math2 {
 	 * Should work on lines, but if you just need the midpoint use getMidPoint()
 	 * Works on a single point, though that isn't useful
 	 * @param points Vector2f... Polygon to check
-	 * @return
+	 * @return Vector2f[2] The output, [0] is the center, [1] is the dimensions
 	 */
 	public static Vector2f[] calcPolygonDimensions(@Nonnull Vector2f... points) {
 		if (points.length == 0)
@@ -571,6 +585,11 @@ public class Math2 {
 		return new Vector2f[] {new Vector2f(mx, my), new Vector2f(lx-sx, ly-sy)};
 	}
 	
+	/**
+	 * Calculates the dimensions of a polygon and then updates it
+	 * @param p Polygon To use
+	 * @return Polygon The polygon 
+	 */
 	public static Polygon calcPolygonDimensionsAndUpdate(@Nonnull Polygon p) {
 		Vector2f[] res = calcPolygonDimensions(p.getPoints());
 
@@ -606,5 +625,18 @@ public class Math2 {
 		}
 
 		return collides;
+	}
+	
+	/**
+	 * Returns the next power of two
+	 * 
+	 * does what it says on the tin
+	 * 
+	 * @param n int Number to check
+	 * @return int The next power of two
+	 */
+	public static final int nextPowerOfTwo(int n) {
+		if (n <= 1) return 1;
+		return 1 << (32 - Integer.numberOfLeadingZeros(n - 1));
 	}
 }

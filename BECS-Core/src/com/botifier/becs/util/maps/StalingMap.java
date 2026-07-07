@@ -23,6 +23,8 @@ import com.botifier.becs.util.maps.immutable.ImmutableHashMap;
  * Periodically rebuilds the immutable backing store to purge tombstones
  * and reclaim memory.
  * 
+ * Does not support keys with null values, returns null when the key does not exist
+ * 
  * WARNING: equality checks are not supported
  * 
  * AI Assisted
@@ -122,7 +124,7 @@ public class StalingMap<K, V> implements Map<K, V> {
         	
         	mutable.clear();
         	tombstones.clear();
-    	}, EXECUTOR).whenComplete((l, i) -> {//CICD didn't like the unnamed parameters
+    	}, EXECUTOR).whenComplete((l, i) -> {//The CICD didn't like the unnamed parameters
         	updateCount.getAndSet(0);
             STALING.setVolatile(this, false);
     	});

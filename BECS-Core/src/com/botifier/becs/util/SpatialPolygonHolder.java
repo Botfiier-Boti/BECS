@@ -8,6 +8,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import javax.annotation.Nonnull;
+
 import org.joml.Intersectionf;
 import org.joml.Vector2L;
 import org.joml.Vector2Lc;
@@ -27,13 +29,7 @@ import com.botifier.becs.util.shapes.RotatableRectangle;
  * 
  * @author Botifier
  */
-public class SpatialPolygonHolder implements Cloneable {
-	final int cellSize;
-	final Entity owner;
-	/**
-	 * A concurrent safe set
-	 */
-	Set<Vector2Lc> hashes;
+public record SpatialPolygonHolder(Entity owner, Set<Vector2Lc> hashes, int cellSize) implements Cloneable {
 
 	/**
 	 * SpatialPolygon constructor
@@ -46,11 +42,6 @@ public class SpatialPolygonHolder implements Cloneable {
 		this(owner, gridifyPolygon(p, cellSize), cellSize);
 	}
 
-	private SpatialPolygonHolder(Entity owner, Set<Vector2Lc> hashes, int cellSize) {
-		this.owner = owner;
-		this.cellSize = cellSize;
-		this.hashes = hashes;
-	}
 
 	/**
 	 * Rasterizes specified polygon
@@ -58,7 +49,7 @@ public class SpatialPolygonHolder implements Cloneable {
 	 * @param p Polygon to rasterize
 	 * @return Set/<Vector2f/> The rasterized points
 	 */
-	private static Set<Vector2Lc> gridifyPolygon(Polygon p, int cellSize) {
+	private static Set<Vector2Lc> gridifyPolygon(@Nonnull Polygon p, int cellSize) {
 		RotatableRectangle rr = p.getBoundingBox();
 
 		final long maxX = Math.floorDiv((long) rr.getMaxX(), cellSize) + 1;
@@ -71,7 +62,7 @@ public class SpatialPolygonHolder implements Cloneable {
 		return rasterizePolygon(p, minX, maxX, minY, maxY, cellSize, cellCount > 16);
 	}
 	
-	private static Set<Vector2Lc> rasterizePolygon(Polygon p, long minX, long maxX, long minY, long maxY, int cellSize, boolean parallel) {
+	private static Set<Vector2Lc> rasterizePolygon(@Nonnull Polygon p, long minX, long maxX, long minY, long maxY, int cellSize, boolean parallel) {
 		final Vector2f[] polyPoints = p.getPoints();
 		final float halfCell = cellSize * 0.5f;
 

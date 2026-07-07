@@ -10,7 +10,7 @@ public class EntityDeathEvent extends Event {
 		this.e = e;
 	}
 	
-	public Entity getEntity() {
+	public final Entity getEntity() {
 		return e;
 	}
 }
