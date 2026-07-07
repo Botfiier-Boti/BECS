@@ -16,6 +16,8 @@ import javax.annotation.Nonnull;
 import com.botifier.becs.util.Pair;
 import com.botifier.becs.util.records.PairNode;
 
+import static com.botifier.becs.util.Math2.nextPowerOfTwo;
+
 /**
  * ImmutableHashMap
  * 
@@ -45,25 +47,27 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	
 	@SuppressWarnings("unchecked")
 	public static <K, V> ImmutableHashMap<K, V> from(Map<K, V> source, Function<K, Long> hasher) {
+        return fromRaw(source, (Function<Object, Long>) hasher);
+    }
+	
+	public static <K, V> ImmutableHashMap<K, V> from(Map<K, V> source) {
+        return fromRaw(source, null);
+    }
+	
+	private static <K, V> ImmutableHashMap<K, V> fromRaw(Map<K, V> source, Function<Object, Long> hasher) {
         final int cap = nextPowerOfTwo(source.size() * 2);
         
 		final PairNode<K, V>[] data = PairNode.newTable(cap);
 		
-        int size = 0;
+        int size = source.entrySet().size();
         for (Entry<K, V> e : source.entrySet()) {
             if (e.getKey() == null) 
             	continue;
             final long hash = hash(e.getKey(), hasher);
-            final int idx = idx(cap, hash);
-            data[idx] = new PairNode<>(e.getKey(), e.getValue(), hash, data[idx]);
-            size++;
+            placeNode(e.getKey(), e.getValue(), hash, data);
         }
         
-        return new ImmutableHashMap<>(data, size, 0.5f, (Function<Object, Long>)hasher);
-    }
-	
-	public static <K, V> ImmutableHashMap<K, V> from(Map<K, V> source) {
-        return from(source, null);
+        return new ImmutableHashMap<>(data, size, 0.5f, hasher);
     }
 	
 	public ImmutableHashMap<K, V> with(@Nonnull K key, @Nonnull V value) {
@@ -73,9 +77,8 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	    if (newSize > data.length * loadFactor) 
 	        return withAll(Map.of(key, value));
 	    
-	    final PairNode<K, V>[] newData = Arrays.copyOf(data, data.length);
-	    final int idx = idx((data.length - 1), hash);
-	    newData[idx] = new PairNode<>(key, value, hash, newData[idx]);
+	    final PairNode<K, V>[] newData = copyArray(data, data.length);
+	    placeNode(key, value, hash, newData);
 	    return new ImmutableHashMap<>(newData, newSize, loadFactor, hasher);
 	}
 	
@@ -85,54 +88,24 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 		
 	    final int newSize = size + source.size();
 	    final int cap = nextPowerOfTwo((int)(newSize / loadFactor));
-	    final PairNode<K, V>[] newData = cap == data.length 
-	    							   ? Arrays.copyOf(data, data.length)
-	    							   : PairNode.newTable(cap);
-	    
-	    // copy existing if resizing
-	    if (cap != data.length) {
-	        for (PairNode<K, V> node : data) {
-	            PairNode<K, V> cur = node;
-	            while (cur != null) {
-	                final int idx = idx(cap-1, cur.hash());
-	                newData[idx] = new PairNode<>(cur.key(), cur.value(), cur.hash(), newData[idx]);
-	                cur = cur.next();
-	            }
-	        }
-	    }
+	    final PairNode<K, V>[] newData = copyArray(data, cap);
 	    
 	    // add new entries
 	    for (Entry<K, V> e : source.entrySet()) {
 	        if (e.getKey() == null) 
 	        	continue;
 	        final long hash = hash(e.getKey(), hasher);
-	        final int idx = idx(cap-1, hash);
-	        newData[idx] = new PairNode<>(e.getKey(), e.getValue(), hash, newData[idx]);
+	        placeNode(e.getKey(), e.getValue(), hash, newData);
 	    }
 	    return new ImmutableHashMap<>(newData, newSize, loadFactor, hasher);
 	}
 	
 	public ImmutableHashMap<K, V> without(K key) {
-	    final long hash = hash(key, hasher);
-	    final int idx = idx(data.length - 1, hash);
-	    final PairNode<K, V> node = data[idx];
+	    RemovalRecord<K> remove = removalRecordFromKey(key);
 	    
-	    if (node == null) return this;
+	    if (remove == null) return this;
 	    
-	    // not in map, nothing to do
-	    if (!containsKey(key)) return this;
-	    
-	    final PairNode<K, V>[] newData = Arrays.copyOf(data, data.length);
-	    
-	    // rebuild the chain at idx excluding the target key
-	    newData[idx] = null;
-	    PairNode<K, V> cur = node;
-	    while (cur != null) {
-	        if (cur.hash() != hash || !cur.key().equals(key)) {
-	            newData[idx] = new PairNode<>(cur.key(), cur.value(), cur.hash(), newData[idx]);
-	        }
-	        cur = cur.next();
-	    }
+	    final PairNode<K, V>[] newData = copyArrayWithout(data, data.length, remove.toTable());
 	    
 	    return new ImmutableHashMap<>(newData, size - 1, loadFactor, hasher);
 	}
@@ -140,11 +113,13 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	public ImmutableHashMap<K, V> withoutAll(Set<K> keys) {
 	    if (keys == null || keys.isEmpty()) return this;
 	    
-	    ImmutableHashMap<K, V> result = this;
-	    for (K key : keys) {
-	        result = result.without(key);
-	    }
-	    return result;
+	    @SuppressWarnings("unchecked")
+		K[] keyA = (K[]) keys.toArray();
+	    RemovalRecord<K>[] records = removalRecordsFromKeys(keyA);
+	    
+	    final PairNode<K, V>[] newData = copyArrayWithout(data, data.length, records);
+	    
+	    return new ImmutableHashMap<>(newData, size - records.length, loadFactor, hasher);
 	}
 	
 	public ImmutableHashMap<K, V> withWithout(Map<K, V> additions, Map<K, Boolean> tombstones) {
@@ -153,11 +128,11 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	        return this;
 	    
 	    // calculate new size
-	    final long removals = tombstones == null ? 0 : 
+	    final long actualRemovals = tombstones == null ? 0 : 
 	        tombstones.keySet().stream().filter(this::containsKey).count();
 	    final long actualAdditions = additions == null ? 0 :
 	        additions.keySet().stream().filter(k -> !tombstones.containsKey(k)).count();
-	    final int newSize = (int)(size - removals + actualAdditions);
+	    final int newSize = (int)(size - actualRemovals + actualAdditions);
 	    
 	    final int cap = nextPowerOfTwo((int)(newSize / loadFactor));
 	    final PairNode<K, V>[] newData = PairNode.newTable(cap);
@@ -167,8 +142,7 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	        PairNode<K, V> cur = node;
 	        while (cur != null) {
 	            if (tombstones == null || !tombstones.containsKey(cur.key())) {
-	                final int idx = idx(cap - 1, cur.hash());
-	                newData[idx] = new PairNode<>(cur.key(), cur.value(), cur.hash(), newData[idx]);
+	                placeNode(cur.key(), cur.value(), cur.hash(), newData);
 	            }
 	            cur = cur.next();
 	        }
@@ -179,9 +153,9 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	        for (Entry<K, V> e : additions.entrySet()) {
 	            if (e.getKey() == null) continue;
 	            if (tombstones != null && tombstones.containsKey(e.getKey())) continue;
+	            
 	            final long hash = hash(e.getKey(), hasher);
-	            final int idx = idx(cap - 1, hash);
-	            newData[idx] = new PairNode<>(e.getKey(), e.getValue(), hash, newData[idx]);
+	            placeNode(e.getKey(), e.getValue(), hash, newData);
 	        }
 	    }
 	    
@@ -214,8 +188,7 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 	    for (Pair<K, V> p : pairs) {
 	        if (p == null || p.key() == null) 
 	        	continue;
-	        final int idx = idx(cap - 1, p.hash());
-	        data[idx] = new PairNode<>(p.key(), p.value(), p.hash(), data[idx]);
+	        placeNode(p.key(), p.value(), p.hash(), data);
 	        size++;
 	    }
 	    return new ImmutableHashMap<>(data, size, loadFactor);
@@ -374,10 +347,36 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 		if (o1 == null || o2 == null) return false;
 		return o1.equals(o2);
 	}
-
-	private static final int nextPowerOfTwo(int n) {
-		if (n <= 1) return 1;
-		return 1 << (32 - Integer.numberOfLeadingZeros(n - 1));
+	
+	private final RemovalRecord<K> removalRecordFromKey(K key) {
+		final long hash = hash(key, hasher);
+	    final int idx = idx(data.length - 1, hash);
+	    PairNode<K, V> node = data[idx];
+	    
+	    while (node != null) {
+	        if (node.hash() == hash && node.key().equals(key))
+	            return new RemovalRecord<>(idx, hash, key);
+	        node = node.next();
+	    }
+	    return null;
+	}
+	
+	@SafeVarargs
+	private final RemovalRecord<K>[] removalRecordsFromKeys(K... keys) {
+		RemovalRecord<K>[] records = RemovalRecord.newTable(keys.length);
+		
+		int count = 0;
+		for (int i = 0; i < keys.length; i++) {
+			K key = keys[i];
+			
+			RemovalRecord<K> record = removalRecordFromKey(key);
+			if (record != null) records[count++] = record;
+			
+		}
+		
+		Arrays.sort(records, 0, count);
+	    
+	    return records.length != count ? Arrays.copyOf(records, count) : records;
 	}
 	
 	private static final int idx(int cap, long hash) {
@@ -392,4 +391,95 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 		return hasher != null ? hasher.apply(key) : key.hashCode();
 	}
 	
+	private static final <K,V> PairNode<K, V> placeNode(final K key, final V value, final long hash, final PairNode<K, V>[] data) {
+		final int idx = idx((data.length - 1), hash);
+	    return data[idx] = new PairNode<>(key, value, hash, data[idx]);
+	}
+	
+	private static final <K, V> void rebuildChain(final PairNode<K, V>[] oldData, final PairNode<K, V>[] newData, final RemovalRecord<K> rem) {
+		final int idx = rem.index();
+		final long hash = rem.hash();
+		final K key = rem.key();
+		
+		PairNode<K, V> cur = oldData[idx];
+		while (cur != null) {
+	        if (cur.hash() != hash || !cur.key().equals(key)) {
+	            newData[idx] = new PairNode<>(cur.key(), cur.value(), cur.hash(), newData[idx]);
+	        }
+	        cur = cur.next();
+	    }
+	}
+	
+	private static final <K, V> PairNode<K, V>[] copyArray(final PairNode<K, V>[] data, final int newLength){
+		return data.length == newLength ? Arrays.copyOf(data, newLength) : copyArrayWithLength(data, newLength);
+	}
+	
+	private static final <K, V> PairNode<K, V>[] copyArrayWithLength(final PairNode<K, V>[] data, final int newLength) {
+		PairNode<K, V>[] newData = PairNode.newTable(newLength);
+		
+		for (PairNode<K, V> node : data) {
+            PairNode<K, V> cur = node;
+            while (cur != null) {
+                placeNode(cur.key(), cur.value(), cur.hash(), newData);
+                cur = cur.next();
+            }
+        }
+		
+		return newData;
+	}
+	
+	@SafeVarargs
+	private static final <K, V> PairNode<K,V>[] copyArrayWithout(final PairNode<K, V>[] data, final int newLength, final RemovalRecord<K>... indexes) {
+		if (indexes == null || indexes.length == 0)
+			return data;
+		
+		PairNode<K, V>[] newData = PairNode.newTable(newLength);
+		
+		int src = 0;
+		int dst = 0;
+		
+		for (int i = 0; i < indexes.length; i++) {
+			RemovalRecord<K> rec = indexes[i];
+			
+			if (rec == null)
+				continue;
+			
+			final int idx = rec.index();
+			
+			int length = idx - src;
+			
+			if (length > 0) {
+				System.arraycopy(data, src, newData, dst, length);
+				dst += length;
+			}
+			
+			rebuildChain(data, newData, rec);
+			
+			src = idx + 1;
+		}
+		
+		if (src < data.length)
+			System.arraycopy(data, src, newData, dst, data.length - src);
+		
+		return newData;
+	}
+	
+	private record RemovalRecord<K>(int index, long hash, K key) implements Comparable<RemovalRecord<K>> {
+		
+		@Override
+		public int compareTo(RemovalRecord<K> o) {
+			return index > o.index ? 1 : index < o.index ? -1 : 0;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public RemovalRecord<K>[] toTable() {
+			return new RemovalRecord[] {this};
+		}
+
+		@SuppressWarnings("unchecked")
+		public static <K> RemovalRecord<K>[] newTable(int cap) {
+			return new RemovalRecord[cap];
+		}
+		
+	}
 }
