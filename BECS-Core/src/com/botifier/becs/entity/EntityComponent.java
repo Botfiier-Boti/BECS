@@ -70,6 +70,9 @@ public class EntityComponent<T> implements Cloneable {
 
 	/**
 	 * Sets the information within the component
+	 * 
+	 * Fires an event if an actual change occurs
+	 * 
 	 * @param info Information to use
 	 */
 	public void set(T info) {
@@ -84,6 +87,9 @@ public class EntityComponent<T> implements Cloneable {
 
 	/**
 	 * Updates the stored information with a UnaryOperator
+	 * 
+	 * Fires an event if an actual change occurs
+	 * 
 	 * @param updater UnaryOperator\<T\> Update operator
 	 * @return T The stored information
 	 */
@@ -119,7 +125,7 @@ public class EntityComponent<T> implements Cloneable {
 		return type;
 	}
 	
-	protected boolean shouldFireEvent(Object o1, Object o2) {
+	protected boolean shouldFireEvent(T o1, T o2) {
 		return owner.isReal() && !Objects.deepEquals(o1, o2);
 	}
 	

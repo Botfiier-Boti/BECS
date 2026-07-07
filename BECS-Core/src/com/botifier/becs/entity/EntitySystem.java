@@ -90,7 +90,7 @@ public abstract class EntitySystem {
 		}
 		
 		String bestStarter = requiredComponents[0];
-	    int minSize = EntityComponentManager.getEntitiesWithComponent(bestStarter).size();
+	    int minSize = EntityComponentManager.getNumberOfEntitiesWithComponent(bestStarter);
 
 	    for (int i = 1; i < requiredComponents.length; i++) {
 	    	String comp = requiredComponents[i];
@@ -104,14 +104,9 @@ public abstract class EntitySystem {
 		
 		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(bestStarter);
 		
-		try {
-			Future<Set<Entity>> future = ex.get().submit(() -> entities.parallelStream()
-					   .filter(e -> e.hasComponentPrelower(requiredComponents))
-					   .collect(Collectors.toCollection(Sets::newConcurrentHashSet)));
-			return future.get();
-		} catch (Exception e) {
-			return Sets.newConcurrentHashSet();
-		}
+		return entities.parallelStream()
+				   .filter(e -> e.hasComponentPrelower(requiredComponents))
+				   .collect(Collectors.toCollection(Sets::newHashSet));
 		
 	}
 

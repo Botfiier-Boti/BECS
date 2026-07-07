@@ -111,12 +111,14 @@ public class Entity implements Comparable<Entity>, Cloneable{
 	 * "Kills" the entity by marking them as dead and removing them from the entity map
 	 */
 	public void destroy() {
+		if (dead) return;
+		
 		dead = true;
 
 		Game.getCurrent().getEventManager().executeEvent(new EntityDeathEvent(this.falseClone()));
 		
-		if (entities.containsKey(uuid))
-			entities.remove(uuid);
+		entities.remove(uuid);
+		
 		for (String s : components.keySet()) {
 			removeComponent(s);
 		}

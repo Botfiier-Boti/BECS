@@ -20,12 +20,7 @@ public class EntityVector2fcComponent extends EntityComponent<Vector2fc>{
 	}
 
 	@Override
-	public boolean shouldFireEvent(Object o1, Object o2) {
-		if (!(o1 instanceof Vector2fc && o2 instanceof Vector2fc))
-			return super.shouldFireEvent(o1, o2);
-		Vector2fc v1 = (Vector2fc) o1;
-		Vector2fc v2 = (Vector2fc) o2;
-		
+	public boolean shouldFireEvent(Vector2fc v1, Vector2fc v2) {
 		return !v1.equals(v2, LEEWAY);
 	}
 	

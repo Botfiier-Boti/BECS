@@ -45,6 +45,11 @@ public record ComponentKey<T>(String name, Class<T> type) {
 		return contains;
 	}
 	
+	/**
+	 * Converts primitive classes into their wrapper varients
+	 * @param clazz Class\<?\> Class to check
+	 * @return Class\<?\> The class supplied, unless it is a primitive, then it will return its wrapper
+	 */
 	private static Class<?> resolveType(Class<?> clazz) {
 		if (clazz.isPrimitive())
 			return getWrapperClass(clazz);
