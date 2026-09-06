@@ -15,20 +15,12 @@ import static org.lwjgl.opengl.GL11.glClearColor;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -38,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.sound.sampled.AudioInputStream;
@@ -46,32 +39,30 @@ import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
-import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWCharCallback;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
-import org.lwjgl.glfw.GLFWKeyCallback;
-import org.lwjgl.glfw.GLFWWindowCloseCallback;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLUtil;
 
-import com.botifier.becs.config.IConfig;
+import com.botifier.becs.config.Config;
 import com.botifier.becs.entity.Entity;
 import com.botifier.becs.entity.EntityComponentManager;
 import com.botifier.becs.entity.EntitySystem;
+import com.botifier.becs.events.listeners.WorldListener;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.sound.SoundListener;
 import com.botifier.becs.sound.SoundManager;
 import com.botifier.becs.util.Input;
-import com.botifier.becs.util.debugging.ExecutionTimer;
+import com.botifier.becs.util.ResourceManager;
+import com.botifier.becs.util.events.EventManager;
+import com.botifier.becs.util.glfw.GLFWWindow;
+import com.botifier.becs.util.memory.HighSpeedGate;
+import com.botifier.becs.util.glfw.GLFWInput;
+import com.botifier.becs.util.glfw.GLFWGameTimer;
 import com.botifier.becs.util.shapes.RotatableRectangle;
-import com.botifier.becs.util.events.*;
-import com.botifier.becs.events.KeyCharacterActionEvent;
-import com.botifier.becs.events.listeners.*;
 
 //Based on https://www.lwjgl.org/guide
 //Added a separate thread for game loop and render. like in https://github.com/LWJGL/lwjgl3-demos/blob/main/src/org/lwjgl/demo/opengl/glfw/Multithreaded.java
@@ -97,13 +88,13 @@ public abstract class Game {
 	 */
 	private static Game current;
 
-	/**
-	 * Input controller
+	/*
+	 * A high speed atomic gate
 	 */
-	private Input input;
+	private static volatile HighSpeedGate gate = new HighSpeedGate();
 
 	/**
-	 * Window id
+	 * Window
 	 */
 	private Window window;
 
@@ -111,6 +102,11 @@ public abstract class Game {
 	 * Renderer
 	 */
 	private AtomicReference<Renderer> renderer = new AtomicReference<Renderer>();
+	
+	/**
+	 * Whether or not framerate should be maximized
+	 */
+	private final static AtomicLong frameSleepNs = new AtomicLong(0);
 
 	/**
 	 * Sound manager
@@ -121,37 +117,16 @@ public abstract class Game {
 	 * Event manager
 	 */
 	private EventManager eventManager;
-
+	
 	/**
-	 * Size Callback Updates width and height when the window is resized
+	 * Resource manager
 	 */
-	private GLFWFramebufferSizeCallback fbc;
-
-	/**
-	 * Error Callback
-	 */
-	@SuppressWarnings("unused")
-	private GLFWErrorCallback ecb;
-
-	/**
-	 * Cursor Position Callback
-	 */
-	private GLFWCursorPosCallback ccb;
-
-	/**
-	 * Character Callback For typing
-	 */
-	private GLFWCharCallback gcc;
-
-	/**
-	 * Key Callback Sends key input to the input manager
-	 */
-	private GLFWKeyCallback fkc;
+	private ResourceManager resourceManager;
 
 	/**
 	 * Game title
 	 */
-	private String title;
+	private volatile String title;
 
 	/**
 	 * Vsync enabled/disabled true = enabled false = disabled
@@ -168,27 +143,13 @@ public abstract class Game {
 	/**
 	 * Whether or not the locks should be used
 	 */
+	@Deprecated
 	private final boolean noLock;
-
-	/**
-	 * Tracks whether or not the game is running
-	 */
-	private final AtomicBoolean running = new AtomicBoolean(true);
 
 	/**
 	 * Whether or not the game is resizable
 	 */
 	private boolean resizable;
-
-	/**
-	 * Window width
-	 */
-	private AtomicInteger width = new AtomicInteger(0);
-
-	/**
-	 * Window height
-	 */
-	private AtomicInteger height = new AtomicInteger(0);
 
 	/**
 	 * Initial window width
@@ -229,12 +190,8 @@ public abstract class Game {
 	/**
 	 * Lock for threads. Used if noLock is false.
 	 */
+	@Deprecated
 	private ReentrantLock l = new ReentrantLock();
-
-	/**
-	 * Game timer Tracks the UPS and FPS
-	 */
-	private GameTimer t;
 
 	/**
 	 * Window icon
@@ -254,7 +211,7 @@ public abstract class Game {
 	/**
 	 * Current configs
 	 */
-	private Map<String, IConfig> configs = new ConcurrentHashMap<>();
+	private Map<String, Config> configs = new ConcurrentHashMap<>();
 
 	/**
 	 * Game constructor
@@ -264,8 +221,8 @@ public abstract class Game {
 	 * @param height    Window height
 	 * @param vsync     Enable/disable vsync
 	 * @param resizable Enable/disable window resizing
-	 * @param noLock    Sets whether or not locks should be used; Causes visual
-	 *                  artifacts
+	 * @param noLock    Deprecated - Sets whether or not locks should be used; Causes visual
+	 *                  artifacts 
 	 */
 	public Game(String title, int width, int height, boolean vsync, boolean resizable, boolean noLock) {
 		this.title = title;
@@ -274,8 +231,6 @@ public abstract class Game {
 		this.vsync = vsync;
 		this.resizable = resizable;
 		this.noLock = noLock;
-		this.setWidth(width);
-		this.setHeight(height);
 	}
 
 	/**
@@ -295,11 +250,10 @@ public abstract class Game {
 	 * Runs the game
 	 */
 	public void run() {
-		l.lock();
-		try {
+		try (HighSpeedGate g = gate.tryUseClosable()) {
+			if (g == null) return;
 			initialize();
-		} finally {
-			l.unlock();
+			eventManager.processEvents();
 		}
 		procLoop();
 		cleanup();
@@ -309,16 +263,15 @@ public abstract class Game {
 	 * Cleanup function
 	 */
 	private void cleanup() {
-		running.set(false);
 		soundManager.destroy();
-		glfwMakeContextCurrent(window.getId());
-		GL.setCapabilities(window.getGLCapabilities());
+		window.useCapabilities();
 		exit();
 		clearSystems();
 		renderer.get().destroy();
 		window.destroy();
 		GL.setCapabilities(null);
 		glfwTerminate();
+		System.exit(0);
 	}
 
 	/**
@@ -353,73 +306,12 @@ public abstract class Game {
 	 * Initialization of Window and Game functionality Runs init()
 	 */
 	private void initialize() {
-		ecb = GLFWErrorCallback.createPrint(System.err);
-
-		if (!glfwInit()) {
-			throw new IllegalStateException("Unable to initialize GLFW");
-		}
 		current = this;
 
-		window = new Window(title, getWidth(), getHeight(), resizable, vsync);
+		window = new GLFWWindow(title, this, resizable, vsync);
 
+		
 		glfwMakeContextCurrent(window.getId());
-
-		glfwSetKeyCallback(window.getId(), fkc = new GLFWKeyCallback() {
-			@Override
-			public void invoke(long window, int key, int scancode, int action, int mods) {
-				if (input != null) {
-					input.keyAction(key, action);
-				}
-			}
-		});
-
-		glfwSetFramebufferSizeCallback(window.getId(), fbc = new GLFWFramebufferSizeCallback() {
-			@Override
-			public void invoke(long window, int width, int height) {
-				setWidth(width);
-				setHeight(height);
-				if (getRenderer() != null) {
-					getRenderer().setZoom(1);
-					getRenderer().setOffset(new Vector2f());
-					getRenderer().refreshWindow();
-				}
-			}
-		});
-
-		glfwSetCursorPosCallback(window.getId(), ccb = new GLFWCursorPosCallback() {
-			@Override
-			public void invoke(long window, double x, double y) {
-				if (input != null) {
-					input.updateMousePos(x, y);
-				}
-			}
-		});
-
-		GLFW.glfwSetWindowCloseCallback(window.getId(), new GLFWWindowCloseCallback() {
-
-			@Override
-			public void invoke(long window) {
-				running.set(false);
-			}
-
-		});
-
-		GLFW.glfwSetCharCallback(window.getId(), gcc = new GLFWCharCallback() {
-
-			@Override
-			public void invoke(long window, int charCode) {
-				if (input != null) {
-					input.setLastCharCode(charCode);
-				}
-				if (eventManager != null)
-					eventManager.executeEvent(new KeyCharacterActionEvent(charCode), "CharCallback");
-			}
-
-		});
-
-		t = new GameTimer();
-		t.init();
-
 		EntityComponentManager.init();
 
 		soundManager = new SoundManager();
@@ -439,7 +331,6 @@ public abstract class Game {
 		eventManager.registerListener(wl);
 		worldListenerId.set(wl.getOwner());
 
-		input = new Input(window.getId());
 		
 		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
 
@@ -458,7 +349,7 @@ public abstract class Game {
 	/**
 	 * Creates a thread to separate the window and game loop
 	 */
-	private void procLoop() {
+	private final void procLoop() {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 		if (isDebug()) {
@@ -474,21 +365,23 @@ public abstract class Game {
 
 		RenderRunnable rr = new RenderRunnable();
 		Thread t = new Thread(() -> {
-			while (running.get())
+			while (window.isRunning()) {
 				rr.run();
+			}
 		}, "Render Thread");
 		
 		t.setDaemon(true);
-		t.setPriority(Thread.MAX_PRIORITY);
+		t.setPriority(Thread.MIN_PRIORITY);
 		t.start();
 
-		while (running.get()) {
-			GLFW.glfwWaitEventsTimeout(0.01);
-			Thread.yield();
+		while (window.isRunning()) {
+			GLFW.glfwWaitEventsTimeout(1);
+			Thread.onSpinWait();
 		}
 		
 		update.cancel(true);
 		schedular.shutdownNow();
+		
 	}
 
 	/**
@@ -501,10 +394,10 @@ public abstract class Game {
 	@Deprecated
 	private void loop() {
 		float accumulator = 0;
-		while (running.get()) {
-			t.update();
+		while (window.isRunning()) {
+			getTimer().update();
 			ticksAlive.incrementAndGet();
-			delta.set(t.getDelta());
+			delta.set(getTimer().getDelta());
 			accumulator += delta.get();
 			try {
 
@@ -512,7 +405,7 @@ public abstract class Game {
 				int updates = 0;
 				while (accumulator > interval && updates < 5) {
 					update();
-					t.updateUPS();
+					getTimer().updateUPS();
 					systems.forEach(system -> {
 						Entity[] entities = system.getValidEntities().toArray(Entity[]::new);
 						system.apply(entities);
@@ -550,7 +443,7 @@ public abstract class Game {
 	@Deprecated
 	private void render() {
 		glfwMakeContextCurrent(window.getId());
-		GL.setCapabilities(window.getGLCapabilities());
+		window.useCapabilities();
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 		if (isDebug()) {
@@ -561,7 +454,7 @@ public abstract class Game {
 
 		window.setIcon(icon);
 
-		while (running.get()) {
+		while (window.isRunning()) {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			// l.lock();
 			RotatableRectangle camera = new RotatableRectangle(getRenderer().getCameraCenter().x,
@@ -582,7 +475,7 @@ public abstract class Game {
 				}
 			}
 			getRenderer().resetRenderStatus();
-			t.updateFPS();
+			getTimer().updateFPS();
 			// l.unlock();
 		}
 		exit();
@@ -594,9 +487,9 @@ public abstract class Game {
 	 * Adds a config to use
 	 * 
 	 * @param name   String Name of the config
-	 * @param config IConfig To use
+	 * @param config Config To use
 	 */
-	public void addConfig(String name, IConfig config) {
+	public void addConfig(String name, Config config) {
 		configs.put(name.toLowerCase(), config);
 	}
 
@@ -604,30 +497,10 @@ public abstract class Game {
 	 * Removes config
 	 * 
 	 * @param name String Name of the config
-	 * @return IConfig The dropped config
+	 * @return Config The dropped config
 	 */
-	public IConfig dropConfig(String name) {
+	public Config dropConfig(String name) {
 		return configs.remove(name.toLowerCase());
-	}
-
-	/**
-	 * Sets the window width
-	 * 
-	 * @param width Window width
-	 */
-	public void setWidth(int width) {
-		this.width.set(width);
-		;
-	}
-
-	/**
-	 * Sets the window height
-	 * 
-	 * @param height Window height
-	 */
-	public void setHeight(int height) {
-		this.height.set(height);
-		;
 	}
 
 	/**
@@ -671,7 +544,7 @@ public abstract class Game {
 		long currentContext = GLFW.glfwGetCurrentContext();
 		if (currentContext != window.getId())
 			glfwMakeContextCurrent(window.getId()); // Obtains context
-		GL.setCapabilities(window.getGLCapabilities()); 
+		window.useCapabilities();
 	}
 
 	/**
@@ -737,7 +610,23 @@ public abstract class Game {
 	 */
 	public static void setDebug(boolean debug) {
 		Game.debug.set(debug);
-		;
+	}
+	
+	/**
+	 * Sets the delay in nanoseconds between frames
+	 * 
+	 * @param delay
+	 */
+	public static void setFrameDelayNs(int delay) {
+		frameSleepNs.set(delay);
+	}
+	
+	/**
+	 * Gets the delay in nanoseconds between frames
+	 * @return int The delay
+	 */
+	public static long getFrameDelayNs() {
+		return frameSleepNs.get();
 	}
 
 	/**
@@ -755,7 +644,7 @@ public abstract class Game {
 	 * @return Input Manager
 	 */
 	public Input getInput() {
-		return input;
+		return window.getInput();
 	}
 
 	/**
@@ -764,7 +653,7 @@ public abstract class Game {
 	 * @return Game Timer
 	 */
 	public GameTimer getTimer() {
-		return t;
+		return window.getTimer();
 	}
 
 	/**
@@ -813,27 +702,9 @@ public abstract class Game {
 	}
 
 	/**
-	 * Returns current game width
-	 * 
-	 * @return Width
-	 */
-	public int getWidth() {
-		return width.get();
-	}
-
-	/**
-	 * Returns current game height
-	 * 
-	 * @return Height
-	 */
-	public int getHeight() {
-		return height.get();
-	}
-
-	/**
 	 * Returns initial game width
 	 * 
-	 * @return Initial Game Width
+	 * @return int Initial Game Width
 	 */
 	public int getInitWidth() {
 		return iWidth;
@@ -842,10 +713,28 @@ public abstract class Game {
 	/**
 	 * Returns initial game height
 	 * 
-	 * @return Initial Game Height
+	 * @return int Initial Game Height
 	 */
 	public int getInitHeight() {
 		return iHeight;
+	}
+	
+	/**
+	 * Returns game width
+	 * 
+	 * @return int Game Width
+	 */
+	public int getWidth() {
+		return window.getWidth();
+	}
+
+	/**
+	 * Returns game height
+	 * 
+	 * @return int Game Height
+	 */
+	public int getHeight() {
+		return window.getHeight();
 	}
 
 	/**
@@ -910,41 +799,16 @@ public abstract class Game {
 	public EventManager getEventManager() {
 		return eventManager;
 	}
-
+	
 	/**
-	 * The frame buffer size callback
+	 * Returns the resource manager
 	 * 
-	 * @return GLFWFramebufferSizeCallback
-	 */
-	public GLFWFramebufferSizeCallback getFbc() {
-		return fbc;
-	}
-
-	/**
-	 * The key callback
+	 * lazy loaded
 	 * 
-	 * @return GLFWKeyCallback
+	 * @return ResourceManager
 	 */
-	public GLFWKeyCallback getFkc() {
-		return fkc;
-	}
-
-	/**
-	 * The cursor position callback
-	 * 
-	 * @return GLFWCursorPosCallback
-	 */
-	public GLFWCursorPosCallback getCursorPosCallback() {
-		return ccb;
-	}
-
-	/**
-	 * The character callback
-	 * 
-	 * @return GLFWCharCallback
-	 */
-	public GLFWCharCallback getCharacterCallback() {
-		return gcc;
+	public ResourceManager getResourceManager() {
+		return resourceManager == null ? resourceManager = new ResourceManager() : resourceManager;
 	}
 
 	/**
@@ -961,7 +825,7 @@ public abstract class Game {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends IConfig> T getConfig(String name) {
+	public <T extends Config> T getConfig(String name) {
 		return (T) configs.getOrDefault(name.toLowerCase(), null);
 	}
 
@@ -970,33 +834,25 @@ public abstract class Game {
 	 */
 	private class UpdateRunnable implements Runnable {
 		
+		
 		@Override
 		public void run() {
-			if (!running.get()) {
+			if (!window.isRunning()) {
 				return;
 			}
-			final ReentrantLock lock = l;
 			
 			Thread.currentThread().setName("Update Thread");
-			t.update(); // Update the timer
-			delta.set(t.getDelta()); // set delta
+			getTimer().update(); // Update the timer
+			delta.set(getTimer().getDelta()); // set delta
 			accumulator += delta.get();
-			try {
-				if (!noLock && lock.tryLock(5, TimeUnit.MILLISECONDS)) {
-					try {
-						tick();
-					} finally {
-						lock.unlock(); // Unlocks if locking is enabled
-					}
-				} else
-					tick();
-			} catch (InterruptedException ie) {
-				//Don't really care if the lock is interrupted
-			} catch (Exception e) {
+			try (HighSpeedGate g = gate.tryUseClosable()) {
+				if (g == null) return;
+
+				tick();
+			}catch (Exception e) {
 				e.printStackTrace();
-			} finally {
-				ticksAlive.incrementAndGet(); // Add to the tick tracker	
 			}
+			
 		}
 		
 		private void tick() {
@@ -1004,10 +860,14 @@ public abstract class Game {
 			
 			for (EntitySystem system : systems) {
 				Entity[] entities = system.getValidEntities().toArray(Entity[]::new); // Obtains all valid entities
-				system.apply(entities); // Applies the system to all of those entities
+				
+				system.apply(entities).join(); // Applies the system to all of those entities and waits for futures to complete
 			}
+
+			eventManager.processEvents();
 			
-			t.updateUPS(); // Updates UPS counter (Updates Per Second)
+			getTimer().updateUPS(); // Updates UPS counter (Updates Per Second)
+			
 		}
 	}
 
@@ -1018,37 +878,32 @@ public abstract class Game {
 		
 		@Override
 		public void run() {
-			if (!running.get()) {
+			if (!window.isRunning()) 
+				return;
+			if (gate.isBusy()) {
+				LockSupport.parkNanos(1L); //Park for a moment to avoid overwhelming the core the render thread is on
 				return;
 			}
-			final ReentrantLock lock = l;
+			
 			long currentContext = GLFW.glfwGetCurrentContext();
 			if (currentContext != window.getId())
 				glfwMakeContextCurrent(window.getId()); // Obtains context
-			GL.setCapabilities(window.getGLCapabilities()); // Obtains the current window's GL Capabilities
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clears the frame
+			window.useCapabilities(); // Obtains the current window's Capabilities
+			window.clear(); // Clears the frame
 
 			try {
-				if (!noLock && lock.tryLock(5, TimeUnit.MILLISECONDS)) {
-					try {
-						render();
-					} finally {
-						lock.unlock();
-					}
-				} else {
-					render();
-				}
-				
-			} catch (Exception e) {
-				e.printStackTrace();
+				render();
 			} finally {
-				if (getRenderer().hasRendered()) {
+				if (getRenderer().hasRendered()) 
 					glfwSwapBuffers(window.getId()); // Only swaps buffers when a render has occurred
-				}
+				
 				getRenderer().resetRenderStatus(); // Resets the rendering status, for tracking whether or not any
 													// Draws happened on this frame
-				t.updateFPS(); // Updates the FPS counter
+				getTimer().updateFPS(); // Updates the FPS counter
+
+				LockSupport.parkNanos(getFrameDelayNs());
 			}
+			
 			Thread.yield();
 		}
 

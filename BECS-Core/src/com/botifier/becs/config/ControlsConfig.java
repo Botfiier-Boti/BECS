@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.botifier.becs.util.Input;
 
@@ -12,19 +14,19 @@ import com.botifier.becs.util.Input;
  * @author Botifier
  *
  */
-public class ControlsConfig implements IConfig {
+public class ControlsConfig implements Config {
 
 	/**
 	 * HashMap mapping keys to specific controls
 	 */
-	private static HashMap<String, List<Integer>> controlsConfig = new HashMap<>();
+	private static HashMap<String, Set<Integer>> controlsConfig = new HashMap<>();
 
 	/**
 	 * Returns all controls by name
 	 * @param name To search
 	 * @return List of Key Codes
 	 */
-	public static List<Integer> getControl(String name) {
+	public static Set<Integer> getControl(String name) {
 		return controlsConfig.get(name.toLowerCase()); //Changes the name parameter to lower-case so that it becomes case-insensitive
 	}
 
@@ -39,7 +41,7 @@ public class ControlsConfig implements IConfig {
 			return false;
 		}
 		//Gets the list of key-codes assigned to a control name
-		List<Integer> l = controlsConfig.get(name.toLowerCase());
+		Set<Integer> l = controlsConfig.get(name.toLowerCase());
 		for (int in : l) {
 			if (i.isKeyPressed(in)) { //Returns true if one of the key-codes is pressed
 				return true;
@@ -55,11 +57,34 @@ public class ControlsConfig implements IConfig {
 	 * @return Boolean whether a key is down pertaining to specified command
 	 */
 	public static boolean down(Input i, String name) {
-		if (!controlsConfig.containsKey(name.toLowerCase())) { //Checks if the name exists on the map
+		String lower = name.toLowerCase();
+		
+		if (!controlsConfig.containsKey(lower)) { //Checks if the name exists on the map
 			return false;
 		}
 		//Gets the list of key-codes assigned to a control name
-		List<Integer> l = controlsConfig.get(name.toLowerCase());
+		Set<Integer> l = controlsConfig.get(lower);
+		for (int in : l) {
+			if (i.isKeyDown(in)) { //Returns true if one of the key-codes is held-down
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Checks whether or not a key tied to the specified control is down
+	 * @param i Input manager
+	 * @param name
+	 * @return Boolean whether a key is down pertaining to specified command
+	 */
+	public static boolean downRaw(Input i, String name) {
+		
+		if (!controlsConfig.containsKey(name)) { //Checks if the name exists on the map
+			return false;
+		}
+		//Gets the list of key-codes assigned to a control name
+		Set<Integer> l = controlsConfig.get(name);
 		for (int in : l) {
 			if (i.isKeyDown(in)) { //Returns true if one of the key-codes is held-down
 				return true;
@@ -79,7 +104,7 @@ public class ControlsConfig implements IConfig {
 			return false;
 		}
 		//Gets the list of key-codes assigned to a control name
-		List<Integer> l = controlsConfig.get(name.toLowerCase());
+		Set<Integer> l = controlsConfig.get(name.toLowerCase());
 		for (int i : l) {
 			if (i == key_code) { //Returns true if the key is assigned to the supplied control name
 				return true;
@@ -102,7 +127,7 @@ public class ControlsConfig implements IConfig {
 			}
 		} else {
 			//Creates a new ArrayList for storing key-codes
-			List<Integer> l = new ArrayList<>();
+			Set<Integer> l = ConcurrentHashMap.newKeySet();
 			//Add the keys to the list
 			for (int i : keys) {
 				l.add(i);
@@ -130,7 +155,7 @@ public class ControlsConfig implements IConfig {
 	}
 	
 	@Override
-	public ControlsConfig readFileOrDefault(String f, IConfig defaultConfig) {
+	public ControlsConfig readFileOrDefault(String f, Config defaultConfig) {
 		return null;
 	}
 

@@ -1,7 +1,7 @@
 package com.botifier.becs;
 
 import com.botifier.becs.entity.Entity;
-import com.botifier.becs.util.SpatialEntityMap;
+import com.botifier.becs.util.maps.SpatialEntityMap;
 import com.botifier.becs.util.shapes.Polygon;
 
 /**

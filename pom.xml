@@ -5,14 +5,16 @@
 	<packaging>pom</packaging>
 	<groupId>BECS</groupId>
 	<artifactId>BECS</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<name>BECS</name>
 	<description>Game development library utilizing lwjgl</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<lwjgl.version>3.3.0</lwjgl.version>
-		<joml.version>1.10.7</joml.version>
+		<lwjgl.version>3.4.1</lwjgl.version>
+		<joml.version>1.10.8</joml.version>
 		<joml-primitives.version>1.10.0</joml-primitives.version>
+    	<maven.compiler.source>25</maven.compiler.source>
+    	<maven.compiler.target>25</maven.compiler.target>
 	</properties>
 	<profiles>
 		<profile>
@@ -164,10 +166,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.lwjgl</groupId>
-			<artifactId>lwjgl-cuda</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.lwjgl</groupId>
 			<artifactId>lwjgl-glfw</artifactId>
 		</dependency>
 		<dependency>
@@ -284,13 +282,19 @@
 					<exclude>**/*.java</exclude>
 				</excludes>
 			</resource>
+			<resource>
+            <directory>src</directory>
+            <excludes>
+                <exclude>test/**</exclude>
+            </excludes>
+        </resource>
 		</resources>
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>17</release>
+					<release>25</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>com.google.auto.service</groupId>
@@ -324,6 +328,7 @@
 		</plugins>
 	</build>
 	<modules>
+		<module>BECS-Events</module>
 		<module>BECS-Assets</module>
 		<module>BECS-Core</module>
 		<module>BECS-Tests</module>

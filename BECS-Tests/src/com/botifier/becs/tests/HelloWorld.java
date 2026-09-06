@@ -7,9 +7,16 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -36,9 +43,9 @@ import com.botifier.becs.graphics.shader.ShaderProgram;
 import com.botifier.becs.graphics.text.Font;
 import com.botifier.becs.sound.Sound;
 import com.botifier.becs.util.CollisionUtil.PolygonOutput;
+import com.botifier.becs.util.maps.SpatialEntityMap;
 import com.botifier.becs.util.EntityRunnable;
 import com.botifier.becs.util.ParameterizedRunnable;
-import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.render.Camera;
 import com.botifier.becs.util.shapes.Circle;
 import com.botifier.becs.util.shapes.Line;
@@ -95,18 +102,11 @@ public class HelloWorld extends Game{
 		//i2.setShaderProgram(sp);
 		i3 = new Image("WhitePixel.png");
 		
-		try {
-			i2.getTexture().write(new File("froggy.png"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-
 		Sound so = Sound.createSound("sounds/alien_crow.wav", false, true);
 		//so.playCopy();
 		//so.playCopy();
 		
-		e = new TestPlayer(0, 0);
+		e = new TestPlayer(-800, -500);
 		Entity.addEntity(e);
 
 		for (int i = 0; i < 4; i++) {
@@ -114,6 +114,7 @@ public class HelloWorld extends Game{
 			Entity e2 = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-600, -200+localI*i2.getHeight(), i2.getWidth(), i2.getHeight());
 					e.setShape(rr);
@@ -146,6 +147,7 @@ public class HelloWorld extends Game{
 			Entity e2 = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-600, -600+localI*i2.getHeight()-1000, i2.getWidth(), i2.getHeight());
 					e.setShape(rr);
@@ -165,6 +167,7 @@ public class HelloWorld extends Game{
 			wew = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					float angle = (float) Math.toRadians(22.5f);
 					Image e = new Image(i2);
 					RotatableRectangle rr = new RotatableRectangle(-400+((float)Math.cos(angle))*localI*i2.getWidth(), -400+((float)Math.sin(angle))*localI*i2.getHeight(), i2.getWidth(), i2.getHeight());
@@ -182,24 +185,27 @@ public class HelloWorld extends Game{
 			Entity.addEntity(wew);
 		}
 		
-		IntStream.range(0, 10000).parallel().forEach(i -> {
+		IntStream.range(0, 1).parallel().forEach(i -> {
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override
 				public Entity init() {
+					setAutoBatch(true);
 					Image e = new Image(i2);
 					e.setScale(0.2f);
 					RotatableRectangle rr =  new RotatableRectangle(-800+localI*-e.getWidth(), -400, e.getWidth(), e.getHeight());
 					e.setShape(rr);
-					e.setZ(-1);
+					e.setZ(0.1f);
 					addComponent("Image", e);
 					addComponent("Position", new Vector2f(-800+localI*-rr.getWidth(), -400));
+					addComponent("Velocity", new Vector2f(0,0));
 					addComponent("CollisionShape", rr);
 					addComponent("Collidable", true);
-					addComponent("IgnoreWith", "Bullet");
-					addComponent("Bullet", true);
+					//addComponent("IgnoreWith", "Solid,Bullet");
+					//addComponent("Bullet", true);
 					addComponent("Solid", true);
-					//addComponent("PhysicsEnabled", new PhysicsListener(e.getUUID()));
+					addComponent("PhysicsEnabled", new PhysicsListener(e.getUUID()));
+					//addComponent("Acceleration", new Vector2f(10f, 0));
 					//addComponent("ArrowKeyControlled", true);
 					return this;
 				}
@@ -210,7 +216,7 @@ public class HelloWorld extends Game{
 		addSystem(ps);
 		addSystem(new ArrowKeyControlsSystem(this));
 		
-
+		this.setBatchAutoDraw(true);
 
 		rotRect = new RotatableRectangle(400, 400, 128, 128, (float) (Math.PI*0));
 		rotRect2 = new RotatableRectangle(getWidth(), 0, 1600, 4);
@@ -261,6 +267,7 @@ public class HelloWorld extends Game{
 		
 		getRenderer().setZoom(1f);
 		getRenderer().setCameraCenter(new Vector2f(0, 0));
+		
 	}
 
 	@Override
@@ -291,16 +298,44 @@ public class HelloWorld extends Game{
 
 	@Override
 	public void draw(Renderer r, WorldState state, RotatableRectangle camera, float alpha) {
+
 		this.camera.draw(r);
 		
 		if (center != null) {
 			EntityComponent<Vector2f> velComp = center.getComponent("Velocity");
 			EntityComponent<Vector2f> posComp = center.getComponent("Position");
+			
 			Vector2f v = velComp.get();
 			Vector2f p = posComp.get();
 			r.writeText("Velocity: "+v.x+", "+v.y, -r.getCurrentWidth()/2+20, r.getCurrentHeight()/2-20);
 			r.writeText("Position: "+p.x+", "+p.y, -r.getCurrentWidth()/2+20, r.getCurrentHeight()/2-40);
 		}
+		
+
+		/*
+
+		state.sem.getGrid().keySet().forEach(k -> {
+			int cellSize = state.sem.getCellSize();
+			float cX = k.x() * cellSize + cellSize;
+			float cY = k.y() * cellSize + cellSize;
+
+			if (r.getFrustumIntersection().testPoint(cX, cY, -1)) {
+				RotatableRectangle rr = new RotatableRectangle(cX, cY, cellSize, cellSize);
+				
+				float re = ((k.hashCode() >> 16) & 0xFF) / 255.0f;
+				float ge = ((k.hashCode() >> 8)  & 0xFF) / 255.0f;
+				float be = ((k.hashCode())       & 0xFF) / 255.0f;
+				
+				rr.draw(r, Color.white);
+				auto.add(Image.WHITE_PIXEL, rr, new Color(re < 0.1f ? 0.1f : re, ge < 0.1f ? 0.1f : ge, be < 0.1f ? 0.1f : be), 0f);
+			}
+		});
+
+		auto.draw(r);
+		
+		renderDebugCollisions(r, state.sem);
+		this.camera.endDrawing(r);*/
+		//EntityComponent<Integer> fake = center.getComponent("Position");
 		/*
 		if (center != null) {
 			if (center.hasComponent("Position")) {
@@ -341,17 +376,7 @@ public class HelloWorld extends Game{
 						  });*/
 		
 		//renderDebugCollisions(r, sem);
-		/*
-		sem.getGrid().keySet().parallelStream().forEach(k -> {
-			int cellSize = sem.getCellSize();
-			float cX = k.x * cellSize + cellSize;
-			float cY = k.y * cellSize + cellSize;
-
-			if (r.getFrustumIntersection().testPoint(cX, cY, -1)) {
-				RotatableRectangle rr = new RotatableRectangle(cX, cY, cellSize, cellSize);
-				auto.add(Image.WHITE_PIXEL, rr, Color.blue, -1);
-			}
-		});*/
+		
 
 	}
 

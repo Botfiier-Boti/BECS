@@ -1,5 +1,6 @@
 package com.botifier.becs.entity;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -11,6 +12,8 @@ import com.botifier.becs.events.*;
  *
  * Base class for Entity Components
  * Stores information atomically
+ * 
+ * 
  * @author Botifier
  *
  * @param \<T\> Type of component
@@ -44,8 +47,7 @@ public class EntityComponent<T> implements Cloneable {
 	 */
 	@SuppressWarnings("unchecked")
 	public EntityComponent(String name, Entity owner, T info) {
-		information = new AtomicReference<>();
-		set(info);
+		information = new AtomicReference<>(info);
 		this.name = name;
 		this.owner = owner;
 		this.type = (Class<T>) info.getClass();
@@ -70,26 +72,35 @@ public class EntityComponent<T> implements Cloneable {
 
 	/**
 	 * Sets the information within the component
+	 * 
+	 * Fires an event if an actual change occurs
+	 * 
 	 * @param info Information to use
 	 */
 	public void set(T info) {
-		if (!info.equals(get()))
-			Game.getCurrent().getEventManager().executeEventOn(new EntityComponentUpdatedEvent<T>(this, get(), info),
+		T old = information.getAndSet(info);
+		
+		if (shouldFireEvent(info, old))
+			Game.getCurrent().getEventManager().executeEventOn(new EntityComponentUpdatedEvent<T>(this, old, info),
 																   getName(),
 																   getOwnerUUID());
-		information.set(info);
 	}
 	
 
 	/**
 	 * Updates the stored information with a UnaryOperator
+	 * 
+	 * Fires an event if an actual change occurs
+	 * 
 	 * @param updater UnaryOperator\<T\> Update operator
 	 * @return T The stored information
 	 */
 	public T update(UnaryOperator<T> updater) {
-		T old = get();
-		T result = information.updateAndGet(updater);
-		if (!result.equals(get()))
+		
+		T old = information.getAndUpdate(updater);
+		T result = information.get();
+		
+		if (shouldFireEvent(result, old))
 			Game.getCurrent().getEventManager().executeEventOn(new EntityComponentUpdatedEvent<T>(this, old, result),
 																   getName(),
 																   getOwnerUUID());
@@ -112,9 +123,20 @@ public class EntityComponent<T> implements Cloneable {
 		return owner != null ? owner.getUUID() : null;
 	}
 
-	public Class<T> getDataType() {
+	public final Class<T> getDataType() {
 		return type;
 	}
+	
+	protected boolean shouldFireEvent(T o1, T o2) {
+		return owner.isReal() && !Objects.deepEquals(o1, o2);
+	}
+	
+	
+	@Override
+	public String toString() {
+		return String.format("%s %s %s %s", name, owner.getName(), type.getName(), information.get().toString());
+	}
+	
 	@SuppressWarnings("unchecked")
 	@Override
 	public EntityComponent<T> clone() {

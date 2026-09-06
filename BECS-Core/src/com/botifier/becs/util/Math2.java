@@ -4,6 +4,7 @@ import javax.annotation.Nonnull;
 
 import org.joml.Math;
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.util.shapes.*;
 
@@ -53,7 +54,7 @@ public class Math2 {
 	 * @return Vector2f the point between
 	 */
 	public static Vector2f getMidpoint(Vector2f v, Vector2f v2) {
-		return new Vector2f( (v.x + v2.x) / 2 , (v.y + v2.y) / 2 );
+		return getMidpoint(v.x, v.y, v2.x, v2.y);
 	}
 
 	/**
@@ -153,6 +154,8 @@ public class Math2 {
 	 * @return Vector2f Resulting point
 	 */
 	public static Vector2f rotatePoint(Vector2f point, float angle) {
+		if (angle == 0)
+			return point;
 		Vector2f newPoint = new Vector2f();
 
 		float mx = (Math.cos(angle));
@@ -170,8 +173,8 @@ public class Math2 {
 	 * @param dst2 Vector2f second
 	 * @return float The angle between
 	 */
-	public static float calcAngle(Vector2f src2,Vector2f dst2) {
-		return Math.atan2(dst2.y-src2.y, dst2.x-src2.x);
+	public static float calcAngle(final Vector2fc src2, final Vector2fc dst2) {
+		return Math.atan2(dst2.y()-src2.y(), dst2.x()-src2.x());
 	}
 
 	public static float calcAngle(float x1, float y1, float x2, float y2) {
@@ -180,10 +183,10 @@ public class Math2 {
 
 	//TODO: find a way to do this with different outputs without copy/pasting
 	public static float greatestNumber(float x, float y) {
-		return x > y ? x : y > x ? y : x;
+		return x > y ? x : y;
 	}
 	public static float lowestNumber(float x, float y) {
-		return x > y ? y : y > x ? x : x;
+		return x > y ? y : x;
 	}
 
 	public static boolean greaterThan(float x, float y) {
@@ -198,11 +201,22 @@ public class Math2 {
 	 * A linear interpolation function
 	 * @param a float start
 	 * @param b float end
-	 * @param c float time
+	 * @param t float time
 	 * @return float The interpolation
 	 */
-	public static float lerp(float a, float b, float c) {
-		return a+c*(b-a);
+	public static float lerp(float a, float b, float t) {
+		return a+t*(b-a);
+	}
+	
+	/**
+	 * A linear interpolation function, using ints
+	 * @param a int start
+	 * @param b int end
+	 * @param t byte time
+	 * @return int The interpolation
+	 */
+	public static int intLerp(final int a, final int b, final byte t) {
+		return a + ((b-a) * t >> 8);
 	}
 
 	/**
@@ -215,33 +229,58 @@ public class Math2 {
 	public static float getCloser(float a, float b, float c) {
 		return (Math.abs(c-a) < Math.abs(c-b)) ? a : b;
 	}
-
-	public static Vector2f round(Vector2f v, int dec) {
+	
+	
+	static final int[] pow10 = {
+		1,
+		10,
+		100,
+		1000,
+		10000,
+		100000,
+		1000000,
+		10000000,
+		100000000,
+		1000000000,
+	};
+	
+	public static Vector2f round(final Vector2f v, final int dec) {
 		Vector2f n = new Vector2f();
 		return n.set(round(v.x, dec), round(v.y, dec));
 	}
 
 	/**
 	 * Rounds a float to x decimal places
+	 * handles up to nine places, as that is what int can hold and is already beyond float precision
+	 * 
+	 * Rounds by snapping decimals
+	 * technically truncation, but I named it round so it is round
 	 * @param f float To round
 	 * @param dec int Number of decimals
+	 * @throws IllegalArgumentException if dec > 9 
 	 * @return float rounded number
 	 */
-	public static float round(float f, int dec) {
-		float divisor =  (float) java.lang.Math.pow(10, dec);
-		int value = (int) (f * divisor);
-
+	public static float round(final float f, final int dec) {
+		if (dec >= pow10.length)
+			throw new IllegalArgumentException("Function does not support having more than 9 decimal places due to float precision.");
+		
+		final float divisor =  pow10[dec];
+		final int value = Math.round(f * divisor);
+		
 		return value / divisor;
 	}
 	/**
 	 * Rounds a double to x decimal places
+	 * 
+	 * Rounds by snapping decimals
+	 * technically truncation, but I named it round so it is round
 	 * @param f double To round
 	 * @param dec int Number of decimals
 	 * @return double rounded number
 	 */
 	public static double round(double f, int dec) {
 		double divisor =  java.lang.Math.pow(10, dec);
-		int value = (int) (f * divisor);
+		long value = (long) (f * divisor);
 
 		return value / divisor;
 	}
@@ -463,7 +502,7 @@ public class Math2 {
 		float mag = toUse.length();
 
 		if (mag != 0 && mag > limit) {
-			toUse.mul(limit);
+			toUse.mul(limit / mag);
 		}
 		Vector2f newVector = new Vector2f(toUse);
 		return newVector;
@@ -498,9 +537,22 @@ public class Math2 {
 		return min;
 	}
 	
-	public static int compareVectorsByAngle(Vector2f v1, Vector2f v2, Vector2f center) {
-		double angle1 = Math.atan2(v1.y - center.y, v1.x - center.x);
-		double angle2 = Math.atan2(v2.y - center.y, v2.x - center.x);
+	/**
+	 * Compares vectors by their angle from the supplied origin
+	 * 
+	 * used to wind vector arrays clockwise
+	 * 
+	 * if the angles are equal, they are compared by distance
+	 * if the angles are unequal they are compared to themselves
+	 * 
+	 * @param v1 Vector2f First vector
+	 * @param v2 Vector2f Second vector
+	 * @param center Vector2f Origin vector
+	 * @return int Comparison output, uses Double.compare 
+	 */
+	public static int compareVectorsByAngle(Vector2fc v1, Vector2fc v2, Vector2fc center) {
+		double angle1 = Math.atan2(v1.y() - center.y(), v1.x() - center.x());
+		double angle2 = Math.atan2(v2.y() - center.y(), v2.x() - center.x());
 
 		angle1 = round(angle1, 6);
 		angle2 = round(angle2, 6);
@@ -515,7 +567,7 @@ public class Math2 {
 	 * Should work on lines, but if you just need the midpoint use getMidPoint()
 	 * Works on a single point, though that isn't useful
 	 * @param points Vector2f... Polygon to check
-	 * @return
+	 * @return Vector2f[2] The output, [0] is the center, [1] is the dimensions
 	 */
 	public static Vector2f[] calcPolygonDimensions(@Nonnull Vector2f... points) {
 		if (points.length == 0)
@@ -563,6 +615,11 @@ public class Math2 {
 		return new Vector2f[] {new Vector2f(mx, my), new Vector2f(lx-sx, ly-sy)};
 	}
 	
+	/**
+	 * Calculates the dimensions of a polygon and then updates it
+	 * @param p Polygon To use
+	 * @return Polygon The polygon 
+	 */
 	public static Polygon calcPolygonDimensionsAndUpdate(@Nonnull Polygon p) {
 		Vector2f[] res = calcPolygonDimensions(p.getPoints());
 
@@ -601,10 +658,15 @@ public class Math2 {
 	}
 	
 	/**
-	 * Checks whether or not a Vector2f is NaN or Infinite
-	 * @return boolean If the vector contains a NaN or an Infinite value
+	 * Returns the next power of two
+	 * 
+	 * does what it says on the tin
+	 * 
+	 * @param n int Number to check
+	 * @return int The next power of two
 	 */
-	public static boolean isNanOrInfinite(Vector2f v) {
-		return !Float.isFinite(v.x) || !Float.isFinite(v.y);
+	public static final int nextPowerOfTwo(int n) {
+		if (n <= 1) return 1;
+		return 1 << (32 - Integer.numberOfLeadingZeros(n - 1));
 	}
 }

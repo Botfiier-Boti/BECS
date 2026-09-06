@@ -2,18 +2,18 @@ package com.botifier.junit.assertions;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 public class VectorAssertions {
-	public static void assertVector2fEquals(Vector2f a, Vector2f b, float epsilon, String... message) {
+	public static void assertVector2fEquals(Vector2fc a, Vector2fc b, float epsilon, String... message) {
 		assertTrue(a.equals(b, epsilon), message.length == 0 ? String.format("Vector %s is not epsilon range of %s", a, b) : String.join("\n", message));
 	}
 	
-	public static void assertVector2fNotEquals(Vector2f a, Vector2f b, float epsilon, String... message) {
+	public static void assertVector2fNotEquals(Vector2fc a, Vector2fc b, float epsilon, String... message) {
 		assertFalse(a.equals(b, epsilon), message.length == 0 ? String.format("Vector %s is in epsilon range of %s", a, b) : String.join("\n", message));
 	}
 	
-	public static void assertVector2fArrayEquals(Vector2f[] a, Vector2f[] b, float epsilon, String... message) {
+	public static void assertVector2fArrayEquals(Vector2fc[] a, Vector2fc[] b, float epsilon, String... message) {
 		try {
 			for (int i = 0; i < a.length; i++) {
 				assertVector2fEquals(a[i], b[i], epsilon);
@@ -23,7 +23,7 @@ public class VectorAssertions {
 		}
 	}
 	
-	public static void assertVector2fArrayNotEquals(Vector2f[] a, Vector2f[] b, float epsilon, String... message) {
+	public static void assertVector2fArrayNotEquals(Vector2fc[] a, Vector2fc[] b, float epsilon, String... message) {
 		if (a == null || b == null)
 			return;
 		if (a.length != b.length)

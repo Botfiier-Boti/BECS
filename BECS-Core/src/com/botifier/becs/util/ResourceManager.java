@@ -18,109 +18,109 @@ import com.botifier.becs.sound.Sound;
  */
 public class ResourceManager {
 
-	private final static Map<String, Texture> images = new ConcurrentHashMap<String, Texture>();
-	private final static Map<String, Sound> sounds = new ConcurrentHashMap<String, Sound>();
-	private final static Map<String, ShaderProgram> shaderPrograms = new ConcurrentHashMap<String, ShaderProgram>();
-	private final static Map<String, Shader> shaders = new ConcurrentHashMap<String, Shader>();
-	
-	public static Texture loadTexture(String name, String loc) {
+	private final Map<String, Texture> images = new ConcurrentHashMap<String, Texture>();
+	private final Map<String, Sound> sounds = new ConcurrentHashMap<String, Sound>();
+	private final Map<String, ShaderProgram> shaderPrograms = new ConcurrentHashMap<String, ShaderProgram>();
+	private final Map<String, Shader> shaders = new ConcurrentHashMap<String, Shader>();
+
+	public Texture loadTexture(String name, String loc) {
 		return images.put(name.toLowerCase(), Texture.loadTexture(loc));
 	}
-	
-	public static Texture loadOrGetTexture(String name, String loc) {
+
+	public Texture loadOrGetTexture(String name, String loc) {
 		return images.computeIfAbsent(name.toLowerCase(), t -> Texture.loadTexture(loc));
 	}
-	
-	public static Texture putTexture(String name, Texture t) {
+
+	public Texture putTexture(String name, Texture t) {
 		return images.put(name.toLowerCase(), t);
 	}
-	
-	public static Texture getTexture(String name) {
+
+	public Texture getTexture(String name) {
 		return images.getOrDefault(name.toLowerCase(), null);
 	}
-	
-	public static Texture getOrPutTexture(String name, Function<? super String, ? extends Texture> consumer) {
+
+	public Texture getOrPutTexture(String name, Function<? super String, ? extends Texture> consumer) {
 		return images.computeIfAbsent(name.toLowerCase(), consumer);
 	}
-	
-	public static Sound loadSound(String name, String loc) {
+
+	public Sound loadSound(String name, String loc) {
 		return sounds.put(name.toLowerCase(), Sound.createSound(loc, false, false));
 	}
-	
-	public static Sound loadSound(String name, String loc, boolean loop, boolean relative) {
+
+	public Sound loadSound(String name, String loc, boolean loop, boolean relative) {
 		return sounds.put(name.toLowerCase(), Sound.createSound(loc, loop, relative));
 	}
-	
-	public static Sound loadOrGetSound(String name, String loc) {
+
+	public Sound loadOrGetSound(String name, String loc) {
 		return loadOrGetSound(name.toLowerCase(), loc, false, false);
 	}
-	
-	public static Sound loadOrGetSound(String name, String loc, boolean loop, boolean relative) {
+
+	public Sound loadOrGetSound(String name, String loc, boolean loop, boolean relative) {
 		return sounds.computeIfAbsent(name.toLowerCase(), s -> Sound.createSound(loc, loop, relative));
 	}
-	
-	public static Sound putSound(String name, Sound s) {
+
+	public Sound putSound(String name, Sound s) {
 		return sounds.put(name.toLowerCase(), s);
 	}
-	
-	public static Sound getSound(String name) {
+
+	public Sound getSound(String name) {
 		return sounds.getOrDefault(name.toLowerCase(), null).copy();
 	}
-	
-	public static Sound getOrPutSound(String name, Function<? super String, ? extends Sound> consumer) {
+
+	public Sound getOrPutSound(String name, Function<? super String, ? extends Sound> consumer) {
 		return sounds.computeIfAbsent(name.toLowerCase(), consumer);
 	}
-	
-	public static ShaderProgram putShaderProgram(String name, ShaderProgram sp) {
+
+	public ShaderProgram putShaderProgram(String name, ShaderProgram sp) {
 		if (name == null)
 			return null;
 		return shaderPrograms.put(name.toLowerCase(), sp);
 	}
-	
-	public static ShaderProgram getShaderProgram(String name) {
+
+	public ShaderProgram getShaderProgram(String name) {
 		if (name == null)
 			return null;
 		return shaderPrograms.getOrDefault(name.toLowerCase(), null);
 	}
-	
-	public static ShaderProgram getOrPutShaderProgram(String name, Function<? super String, ? extends ShaderProgram> consumer) {
+
+	public ShaderProgram getOrPutShaderProgram(String name,
+			Function<? super String, ? extends ShaderProgram> consumer) {
 		return shaderPrograms.computeIfAbsent(name.toLowerCase(), consumer);
 	}
-	
-	
-	public static Shader loadOrGetShader(String name, int shaderType, String location) {
+
+	public Shader loadOrGetShader(String name, int shaderType, String location) {
 		return shaders.computeIfAbsent(name.toLowerCase(), s -> Shader.loadShader(shaderType, location));
 	}
-	
-	public static Shader loadShader(String name, int shaderType, String location) {
+
+	public Shader loadShader(String name, int shaderType, String location) {
 		return shaders.put(name.toLowerCase(), Shader.loadShader(shaderType, location));
 	}
-	
-	public static Shader putShader(String name, Shader s) {
+
+	public Shader putShader(String name, Shader s) {
 		return shaders.put(name.toLowerCase(), s);
 	}
-	
-	public static Shader getShader(String name) {
+
+	public Shader getShader(String name) {
 		return shaders.getOrDefault(name.toLowerCase(), null);
 	}
-	
-	public static Shader getOrPutShader(String name, Function<? super String, ? extends Shader> consumer) {
+
+	public Shader getOrPutShader(String name, Function<? super String, ? extends Shader> consumer) {
 		return shaders.computeIfAbsent(name.toLowerCase(), consumer);
 	}
-	
-	public static boolean hasShader(String name) {
+
+	public boolean hasShader(String name) {
 		return shaderPrograms.containsKey(name.toLowerCase());
 	}
-	
-	public static boolean hasShaderProgram(String name) {
+
+	public boolean hasShaderProgram(String name) {
 		return shaderPrograms.containsKey(name.toLowerCase());
 	}
-	
-	public static boolean hasTexture(String name) {
+
+	public boolean hasTexture(String name) {
 		return images.containsKey(name.toLowerCase());
 	}
-	
-	public static boolean hasSound(String name) {
+
+	public boolean hasSound(String name) {
 		return images.containsKey(name.toLowerCase());
 	}
 }

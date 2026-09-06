@@ -1,4 +1,8 @@
 {
+  "epsilon": {
+    "type": "java.lang.Float",
+    "value": 0.05
+  },
   "smoothing_factor": {
     "type": "java.lang.Float",
     "value": 0.75

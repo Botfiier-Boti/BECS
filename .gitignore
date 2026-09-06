@@ -43,3 +43,6 @@ replay_pid*
 
 **/natives
 /bin/
+/.metadata
+BECS-Assets/.factorypath
+BECS-Tests/physics-config.json

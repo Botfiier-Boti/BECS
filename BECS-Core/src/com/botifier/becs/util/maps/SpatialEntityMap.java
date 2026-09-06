@@ -1,6 +1,8 @@
-package com.botifier.becs.util;
+package com.botifier.becs.util.maps;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -8,16 +10,24 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.joml.Vector2f;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
+import org.joml.Vector2L;
+import org.joml.Vector2Lc;
 
 import com.botifier.becs.entity.Entity;
 import com.botifier.becs.entity.EntityComponent;
-import com.botifier.becs.entity.EntityComponentManager;
+import com.botifier.becs.util.SpatialPolygonHolder;
 import com.botifier.becs.util.shapes.Polygon;
 import com.botifier.becs.util.shapes.Shape;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * SpatialEntityMap
@@ -34,8 +44,14 @@ import com.botifier.becs.util.shapes.Shape;
  * @author Botifier
  */
 public class SpatialEntityMap {
+	public static final int BATCH_SIZE = 32;
+	
+	public static final int ENTITY_STATE_MISSING = 0;
+	public static final int ENTITY_STATE_REMOVED_FROM_AWAKE = 1;
+	public static final int ENTITY_STATE_REMOVED_FROM_SLEEPING = 2;
+	
 	private int cellSize;
-	private final Map<Vector2f, Set<Entity>> grid;
+	private final Map<Vector2Lc, Set<UUID>> grid;
 	private final Map<UUID, SpatialPolygonHolder> entityLocations;
 	private final Map<UUID, SpatialPolygonHolder> sleepingEntities;
 
@@ -45,57 +61,37 @@ public class SpatialEntityMap {
      */
 	public SpatialEntityMap(int cellSize) {
 		this.cellSize = cellSize;
-		this.grid = new ConcurrentHashMap<>();
-		this.entityLocations = new ConcurrentHashMap<>();
-		this.sleepingEntities = new ConcurrentHashMap<>();
+		this.grid = new StalingMap<>();
+		this.entityLocations = new StalingMap<>();
+		this.sleepingEntities = new StalingMap<>();
 	}
 
-	private SpatialEntityMap(SpatialEntityMap origin, Set<Vector2f> hashesToCopy) {
+	private SpatialEntityMap(SpatialEntityMap origin, Set<Vector2Lc> hashesToCopy) {
 		this(origin.cellSize);
 
 		hashesToCopy.parallelStream().forEach(hash -> {
-	        Set<Entity> sourceSet = origin.grid.get(hash);
+	        Set<UUID> sourceSet = origin.grid.get(hash);
 	        if (sourceSet != null) {
-	            Set<Entity> clonedSet = sourceSet.stream()
-	                                             .map(Entity::falseClone)
-	                                             .collect(Collectors.toSet());
-	            clonedSet.forEach(clonedEntity -> {
-	                this.entityLocations.put(clonedEntity.getUUID(), origin.entityLocations.get(clonedEntity.getUUID()));
-	            });
-	            this.grid.put(hash, clonedSet);
+	            this.grid.put(hash, sourceSet);
 	        }
 	    });
 	}
 
-	private SpatialEntityMap(int cellSize, Map<Vector2f, Set<Entity>> grid, Map<UUID, SpatialPolygonHolder> ent) {
+	private SpatialEntityMap(int cellSize, Map<Vector2Lc, Set<UUID>> grid, Map<UUID, SpatialPolygonHolder> ent) {
 		this(cellSize);
 
-		grid.entrySet().parallelStream().forEach(e -> {
-			Set<Entity> entitySet = new HashSet<>(e.getValue().size()); // Pre-size if possible.
-
-	        for (Entity entity : e.getValue()) {
-	            Entity faker = entity.falseClone();
-	            entitySet.add(faker);
-
-	            // Fetch and put only if the SpatialPolygonHolder exists.
-	            SpatialPolygonHolder holder = ent.get(faker.getUUID());
-	            if (holder != null) {
-	                this.entityLocations.put(faker.getUUID(), holder);
-	            }
-	        }
-			this.grid.put(e.getKey(), entitySet);
-		});
+		this.grid.putAll(grid);
 	}
 
-	private SpatialEntityMap(int cellSize, Map<Vector2f, Set<Entity>> grid, Map<UUID, SpatialPolygonHolder> ent, Set<Vector2f> hashesToCopy) {
+	private SpatialEntityMap(int cellSize, Map<Vector2Lc, Set<UUID>> grid, Map<UUID, SpatialPolygonHolder> ent, Set<Vector2Lc> hashesToCopy) {
 		this(cellSize);
 
 		hashesToCopy.forEach(h -> {
-			Set<Entity> en = ConcurrentHashMap.newKeySet();
-			Set<Entity> use = grid.get(h);
+			Set<UUID> en = ConcurrentHashMap.newKeySet();
+			Set<UUID> use = grid.get(h);
 			if (use != null) {
 				use.forEach(e -> {
-					Entity faker = e.falseClone();
+					Entity faker = Entity.getEntity(e);
 					if (faker == null) {
 						return;
 					}
@@ -103,7 +99,7 @@ public class SpatialEntityMap {
 					if (sph == null) {
 						return;
 					}
-					en.add(faker);
+					en.add(faker.getUUID());
 					this.entityLocations.put(faker.getUUID(), sph);
 				});
 			}
@@ -117,7 +113,7 @@ public class SpatialEntityMap {
 	 * @param y float To use
 	 * @return Vector2f Chunk location
 	 */
-	public Vector2f getLocation(float x, float y) {
+	public Vector2L getLocation(float x, float y) {
 		return getLocation(x, y, getCellSize());
 	}
 
@@ -128,12 +124,12 @@ public class SpatialEntityMap {
 	 * @return boolean Whether or not the Entity was successfully added
 	 */
 	public boolean addEntity(Entity e) {
-		int state = 0;
+		int state = ENTITY_STATE_MISSING;
 		if (e == null) {
 			return false;
 		}
 		if (contains(e)) {
-			state = removeEntity(e);
+			state = removeEntityQuery(e);
 		}
 		EntityComponent<Shape> s = e.getComponent("CollisionShape");
 		if (s == null) {
@@ -143,8 +139,43 @@ public class SpatialEntityMap {
 		Polygon poly = s.get().toPolygon();
 		SpatialPolygonHolder sph = new SpatialPolygonHolder(e, poly, getCellSize());
 
-		for (Vector2f key : sph.getHashes()) {
-			grid.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet(16)).add(e);
+		for (Vector2Lc key : sph.getHashes()) {
+			grid.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet(16)).add(e.getUUID());
+		}
+		
+		if (state == ENTITY_STATE_REMOVED_FROM_AWAKE) {
+			entityLocations.put(e.getUUID(), sph);
+		}
+		else
+			sleepingEntities.put(e.getUUID(), sph);
+		
+		return true;
+	}
+	
+	/**
+	 * Adds an entity to the map
+	 * If the entity is already in the map re-add it
+	 * @param e Entity To add
+	 * @param state int The state to add it in, 0 is to add it sleeping, 1 is to add it awake, correlates to constants ENTITY_STATE_MISSING and ENTITY_STATE_REMOVED_FROM_AWAKE
+	 * @return boolean Whether or not the Entity was successfully added
+	 */
+	public boolean addEntity(Entity e, int state) {
+		if (e == null) {
+			return false;
+		}
+		if (contains(e)) {
+			removeEntityQuery(e);
+		}
+		EntityComponent<Shape> s = e.getComponent("CollisionShape");
+		if (s == null) {
+			return false;
+		}
+
+		Polygon poly = s.get().toPolygon();
+		SpatialPolygonHolder sph = new SpatialPolygonHolder(e, poly, getCellSize());
+
+		for (Vector2Lc key : sph.getHashes()) {
+			grid.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet(16)).add(e.getUUID());
 		}
 		
 		if (state == 1) {
@@ -158,34 +189,46 @@ public class SpatialEntityMap {
 
 	/**
 	 * Removes an entity from the map
+	 * 
+	 * any return state > 0 is a success
 	 * @param e Entity To remove
-	 * @return boolean Whether or not the removal succeeded
+	 * @return int State based on the existence of the entity in the map, 0 the entity wasn't there, 1 entity was awake and removed, 2 entity was asleep and removed
 	 */
-	public int removeEntity(Entity e) {
+	public int removeEntityQuery(Entity e) {
 		if (!contains(e)) {
-			return 0;
+			return ENTITY_STATE_MISSING;
 		}
 		SpatialPolygonHolder sph = locate(e);
 		if (sph == null) {
-			return 0;
+			return ENTITY_STATE_MISSING;
 		}
-		for (Vector2f key : sph.getHashes()) {
-			Set<Entity> l = grid.get(key);
+		for (Vector2Lc key : sph.getHashes()) {
+			Set<UUID> l = grid.get(key);
 			if (l != null) {
-				l.remove(e);
+				l.remove(e.getUUID());
 				if (l.isEmpty()) {
 					grid.remove(key);
 				}
 			}
 		}
 
-		try {
-			entityLocations.remove(e.getUUID());
-		} catch (NullPointerException ne) {
+		if (entityLocations.remove(e.getUUID()) == null) {
 			sleepingEntities.remove(e.getUUID());
-			return 2;
+			return ENTITY_STATE_REMOVED_FROM_SLEEPING;
 		}
-		return 1;
+		
+		return ENTITY_STATE_REMOVED_FROM_AWAKE;
+	}
+	
+	/**
+	 * Removes an entity from the map
+	 * 
+	 * for when you don't really care outside of whether it succeeded or not
+	 * @param e Entity To Remove
+	 * @return boolean Whether its gone or not
+	 */
+	public boolean removeEntity(Entity e) {
+		return removeEntityQuery(e) > 0;
 	}
 	
 	public boolean sleepEntity(Entity e) {
@@ -239,7 +282,7 @@ public class SpatialEntityMap {
 	 * Updates entities in parallel using threads
 	 * @param movedList List\<Entity\> entities to update
 	 */
-	public void updateEntitiesInParalell(List<Entity> movedList) {
+	public void updateEntitiesInParallel(List<Entity> movedList) {
 		movedList.parallelStream().forEach(this::update);
 		/*List<CompletableFuture<Void>> futures = movedList.parallelStream()
 				.map(en -> CompletableFuture.runAsync(() ->
@@ -251,6 +294,21 @@ public class SpatialEntityMap {
 		CompletableFuture<Void> all = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 		all.join();*/
 	}
+	
+	public void updateEntitiesInBatches(List<Entity> movedList, int batchSize) {
+		if (movedList.isEmpty())
+			return;
+		
+		List<List<Entity>> moved = movedList.size() > batchSize
+								 ? Lists.partition(movedList, batchSize)
+								 : List.of(movedList);
+		
+		moved.parallelStream().forEach(l -> l.forEach(this::update));
+	}
+	
+	public void updateEntitiesInSequence(List<Entity> movedList) {
+		movedList.forEach(this::update);
+	}
 
 	/**
 	 * Removes and re-adds an Entity to update its location in the map
@@ -258,53 +316,33 @@ public class SpatialEntityMap {
 	 * @return boolean Whether or not the entity was successfully re-added
 	 */
 	public boolean update(Entity e) {
-		if (e == null ) {
+		if (e == null )
 			return false;
-		}
+		
 		EntityComponent<Shape> s = e.getComponent("CollisionShape");
-		if (s == null) {
+		if (s == null)
 			return false;
-		}
 
 		Polygon poly = s.get().toPolygon();
 		SpatialPolygonHolder sph = new SpatialPolygonHolder(e, poly, getCellSize());
 		SpatialPolygonHolder old = locate(e);
 
-		Set<Vector2f> safeHashes = new HashSet<>();
+		Set<Vector2Lc> safeHashes = sph.getHashes().parallelStream()
+									  			  .filter(key -> {
+									  				  Set<UUID> existing = grid.get(key);
+									  				  return existing != null && existing.contains(e.getUUID());
+									  			  })
+									  			  .collect(Collectors.toSet());
+		
 
-
-		sph.getHashes().parallelStream().forEach(key -> {
-			grid.compute(key, (k, v) -> {
-				if (v == null) {
-					Set<Entity> set = ConcurrentHashMap.newKeySet(16);
-					set.add(e);
-					return set;
-				}
-				if (v.contains(e)) {
-					safeHashes.add(key);
-				}
-				return v;
-			});
-		});
-
-		old.getHashes().parallelStream().filter(k -> {
-			if (safeHashes.contains(k)) {
-				return false;
-			}
-			return true;
-		}).forEach(k -> {
-			Set<Entity> l = grid.get(k);
-			if (l != null) {
-				l.remove(e);
-				if (l.isEmpty()) {
-					grid.remove(k);
-				}
-			}
-		});
-
-		try {
-			entityLocations.put(e.getUUID(), sph);
-		} catch (NullPointerException ex) {
+		old.getHashes().parallelStream().filter(key -> !safeHashes.contains(key))
+										.forEach(key -> {
+											grid.computeIfPresent(key, (k, v) -> {
+												v.remove(e.getUUID());
+												return v.isEmpty() ? null : v;
+											});
+										});
+		if (entityLocations.putIfAbsent(e.getUUID(), sph) != null) {
 			sleepingEntities.put(e.getUUID(), sph);
 		}
 		
@@ -316,7 +354,7 @@ public class SpatialEntityMap {
 	 * Returns the map of chunks
 	 * @return Map\<Vector2f, List\<Entity\>\> map of chunks
 	 */
-	public Map<Vector2f, Set<Entity>> getGrid() {
+	public Map<Vector2Lc, Set<UUID>> getGrid() {
 		return grid;
 	}
 
@@ -327,8 +365,10 @@ public class SpatialEntityMap {
 	 * @return List\<Entity\> entities in the related chunk
 	 */
 	public Set<Entity> getEntitiesNear(float x, float y) {
-		Vector2f location = getLocation(x, y);
-		return grid.getOrDefault(location, ConcurrentHashMap.newKeySet(16));
+		Vector2L location = getLocation(x, y);
+		return grid.getOrDefault(location, new HashSet<UUID>()).stream()
+				   .collect(Collectors.toConcurrentMap(k -> Entity.getEntity(k), en -> Boolean.TRUE, (a, b) -> a))
+				   .keySet();
 	}
 
 	/**
@@ -336,29 +376,53 @@ public class SpatialEntityMap {
 	 * @param p Polygon To check
 	 * @return Set\<Entity\> of all entities in the overlapping region
 	 */
-	public Set<Entity> getEntitiesIn(Polygon p) {
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p) {
 		return getEntitiesIn(p, false);
 	}
 
-	public Set<Entity> getEntitiesIn(Polygon p, boolean collide, Set<Vector2f> outputHashes) {
-		Set<Vector2f> validHashes = outputHashes;
-
-		if (outputHashes == null) {
-			validHashes = gridifyPolygon(p).getHashes();
-		}
-		Stream<Entity> validEntities = validHashes.parallelStream().map(grid::get)
-																   .filter(Objects::nonNull)
-														           .flatMap(Set::stream);
-		
-		
-
-		if (collide)
-			validEntities = validEntities.filter(e -> EntityComponentManager.hasComponent(e, "Collidable"));
-		return validEntities.collect(Collectors.toCollection(ConcurrentHashMap::newKeySet));
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p, boolean collide) {
+		return getEntitiesIn(p, collide, null);
 	}
 
-	public Set<Entity> getEntitiesIn(Polygon p, boolean collide) {
-		return getEntitiesIn(p, collide, null);
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p, boolean collide, @Nullable Set<Vector2Lc> outputHashes) {
+		return getEntitiesIn(p, 
+				             Sets.newConcurrentHashSet(),
+							 collide ?  e -> e.hasComponent("Collidable") : null, 
+						     outputHashes);
+	}
+	
+	public Set<Entity> getEntitiesIn(@Nonnull Polygon p, @Nonnull Set<Entity> outputEntities, @Nullable Predicate<Entity> filter, @Nullable Set<Vector2Lc> outputHashes) {
+		Set<Vector2Lc> validHashes = outputHashes;
+		
+		if (outputHashes == null)
+			validHashes = gridifyPolygon(p).getHashes();
+		
+		Stream<UUID> validEntities = null;
+		
+		if (validHashes.size() < BATCH_SIZE) {
+			validEntities = validHashes.stream()
+					    			   .map(grid::get)
+					    			   .filter(Objects::nonNull)
+					    			   .flatMap(Set::stream);
+		} else {	
+			validEntities = Lists.partition(new ArrayList<>(validHashes), BATCH_SIZE)
+								 .parallelStream()
+								 .flatMap(batch -> batch.stream())
+								 .map(grid::get)
+								 .filter(Objects::nonNull)
+								 .flatMap(Set::stream);
+		}
+		
+		
+		UUID[] uuids = validEntities.distinct().toArray(UUID[]::new);
+		Entity[] entities = Entity.getEntities(uuids);
+		
+		if (filter != null)
+			entities = Arrays.stream(entities).filter(filter).toArray(Entity[]::new);
+		
+		outputEntities.addAll(Arrays.asList(entities));
+		
+		return outputEntities;
 	}
 
 	/**
@@ -420,19 +484,22 @@ public class SpatialEntityMap {
 	 * @param cellSize Int New cell size
 	 */
 	public void resize(int cellSize) {
-		if (this.cellSize == cellSize) {
-			return;
-		}
-		List<Entity> hold = new ArrayList<>(entityLocations.values()
+		List<Entity> awake = new ArrayList<>(entityLocations.values()
 														   .stream()
 														   .map(SpatialPolygonHolder::getOwner)
 														   .collect(Collectors.toList()));
+		List<Entity> sleeping = new ArrayList<>(sleepingEntities.values()
+                .stream()
+                .map(SpatialPolygonHolder::getOwner)
+                .collect(Collectors.toList()));
 
 		grid.clear();
 		entityLocations.clear();
 		this.cellSize = cellSize;
+	    sleepingEntities.clear();
 
-		hold.forEach(this::addEntity);
+	    awake.forEach(e -> addEntity(e, ENTITY_STATE_REMOVED_FROM_AWAKE));
+	    sleeping.forEach(e -> addEntity(e, ENTITY_STATE_MISSING));
 	}
 
 	/**
@@ -442,11 +509,11 @@ public class SpatialEntityMap {
 	 * @param cellSize int Cell size to use
 	 * @return Vector2f scaled based on cellSize
 	 */
-	public static Vector2f getLocation(float x, float y, int cellSize) {
+	public static Vector2L getLocation(float x, float y, int cellSize) {
 		long cX = Math.floorDiv((long)x, cellSize);
 		long cY = Math.floorDiv((long)y, cellSize);
 
-		return new Vector2f(cX, cY);
+		return new Vector2L(cX, cY);
 	}
 
 	public int getCellSize() {
@@ -461,13 +528,13 @@ public class SpatialEntityMap {
 	}
 
 	public SpatialEntityMap falseClone(Polygon area) {
-		Set<Vector2f> validHashes = gridifyPolygon(area).getHashes();
+		Set<Vector2Lc> validHashes = gridifyPolygon(area).getHashes();
 		SpatialEntityMap sem = new SpatialEntityMap(this.cellSize, this.grid, this.entityLocations, validHashes);
 		return sem;
 	}
 
 	public SpatialEntityMap miniCopy(Polygon area) {
-		Set<Vector2f> validHashes = gridifyPolygon(area).getHashes();
+		Set<Vector2Lc> validHashes = gridifyPolygon(area).getHashes();
 		SpatialEntityMap sem = new SpatialEntityMap(this, validHashes);
 		return sem;
 	}

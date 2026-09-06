@@ -5,14 +5,14 @@ package com.botifier.becs.config;
  * @author Botifier
  *
  */
-public interface IConfig {
+public interface Config {
 
 	/**
 	 * Interprets specified file into config
 	 * @param file String File to read
 	 * @return IConfig The loaded config
 	 */
-	public IConfig readFile(String file);
+	public Config readFile(String file);
 	
 	/**
 	 * Reads the config or returns the default
@@ -20,7 +20,7 @@ public interface IConfig {
 	 * @param defaultConfig IConfig The default
 	 * @return IConfig The result
 	 */
-	public IConfig readFileOrDefault(String file, IConfig defaultConfig);
+	public Config readFileOrDefault(String file, Config defaultConfig);
 	
 	
 	/**

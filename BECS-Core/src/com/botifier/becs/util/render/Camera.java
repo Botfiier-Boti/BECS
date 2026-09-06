@@ -3,6 +3,7 @@ package com.botifier.becs.util.render;
 import static org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER;
 import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,8 +18,8 @@ import com.botifier.becs.graphics.shader.Shader;
 import com.botifier.becs.graphics.shader.ShaderProgram;
 import com.botifier.becs.util.Math2;
 import com.botifier.becs.util.ResourceManager;
-import com.botifier.becs.util.SpatialEntityMap;
 import com.botifier.becs.util.SpatialPolygonHolder;
+import com.botifier.becs.util.maps.SpatialEntityMap;
 import com.botifier.becs.util.shapes.RotatableRectangle;
 
 /**
@@ -46,6 +47,8 @@ public class Camera {
 	 * Polygon cache for entity querying
 	 */
 	private SpatialPolygonHolder cache = null;
+	
+	private Set<Entity> visibleCache = null;
 	
 	/**
 	 * Target entity to follow
@@ -84,10 +87,12 @@ public class Camera {
 		this.game = g;
 		this.camera = new RotatableRectangle(center, width, height);
 		
-		ShaderProgram shp = ResourceManager.getOrPutShaderProgram("CameraShaderProgram", s -> {
+		final ResourceManager rm = g.getResourceManager();
+		
+		ShaderProgram shp = rm.getOrPutShaderProgram("CameraShaderProgram", s -> {
 			ShaderProgram sp = new ShaderProgram();
-			Shader v = ResourceManager.loadOrGetShader("CameraVertex", GL_VERTEX_SHADER, "framebuffer.vert");
-			Shader f = ResourceManager.loadOrGetShader("CameraFragment", GL_FRAGMENT_SHADER, "basic_framebuffer.frag");
+			Shader v = rm.loadOrGetShader(s+"_CameraVertex", GL_VERTEX_SHADER, "framebuffer.vert");
+			Shader f = rm.loadOrGetShader(s+"_CameraFragment", GL_FRAGMENT_SHADER, "basic_framebuffer.frag");
 			
 			sp.attachShader(v);
 			sp.attachShader(f);
@@ -97,6 +102,7 @@ public class Camera {
 		});
 		this.cameraBuffer = new FBO().init(shp);
 		this.cameraBuffer.resize((int) width, (int) height);
+		
 	}
 	
 	
@@ -122,6 +128,8 @@ public class Camera {
 		this.cameraBuffer.draw(r);
 		r.setCameraCenter(new Vector2f(oldCenter));
 		oldCenter = null;
+		//Invalidate the cache so that things moving into frame aren't missed
+		invalidateCache();
 	}
 	
 	/**
@@ -143,16 +151,17 @@ public class Camera {
 	 */
 	public Set<Entity> queryVisible() {
 		if (this.sem == null) 
-			return ConcurrentHashMap.newKeySet();
+			return Collections.emptySet();
 		
 		if (this.cache == null || changed) {
 			this.cache = this.getSpatialEntityMap().gridifyPolygon(camera.toPolygon());
+			this.visibleCache = getSpatialEntityMap().getEntitiesIn(null, false, cache.getHashes());
+			//Make sure the target is always visible
+			this.visibleCache.add(target);
 			changed = false;
 		}
 		
-		Set<Entity> entities = getSpatialEntityMap().getEntitiesIn(null, false, cache.getHashes());
-		
-		return entities;
+		return visibleCache;
 	}
 	
 	/**
@@ -161,6 +170,13 @@ public class Camera {
 	 */
 	public SpatialEntityMap getSpatialEntityMap() {
 		return this.sem;
+	}
+	
+	/**
+	 * Manually invalidate the entity cache
+	 */
+	public void invalidateCache() {
+		this.changed = true;
 	}
 	
 	/**
@@ -183,8 +199,12 @@ public class Camera {
 			this.cl = null;
 		}
 		this.target = e;
+		
+		this.setCenter(e.getComponentValueOrDefault("Position", new Vector2f()));
 		this.cl = new CameraListener(this, e.getUUID());
 		this.game.getEventManager().registerListener(cl);
+		invalidateCache();
+		
 	}
 	
 	/**
@@ -202,9 +222,9 @@ public class Camera {
 	public void setCenter(Vector2f center) {
 		if (center == null)
 			throw new IllegalArgumentException("Center cannot be null");
-		if (Math2.isNanOrInfinite(center))
+		if (!center.isFinite())
 			throw new IllegalArgumentException("Center cannot be either NaN or Infinite");
-		this.changed = true;
+		invalidateCache();
 		this.camera.setCenter(center);
 	}
 	
@@ -216,7 +236,7 @@ public class Camera {
 	public void setWidth(float width) {
 		if (width <= 0)
 			throw new IllegalArgumentException("Width cannot be zero or less");
-		this.changed = true;
+		invalidateCache();
 		this.camera.setWidth(width);
 
 		this.cameraBuffer.resize((int) this.camera.getWidth(), (int) this.camera.getHeight());
@@ -230,7 +250,7 @@ public class Camera {
 	public void setHeight(float height) {
 		if (height <= 0)
 			throw new IllegalArgumentException("Height cannot be zero or less.");
-		this.changed = true;
+		invalidateCache();
 		this.camera.setHeight(height);
 		this.cameraBuffer.resize((int) this.camera.getWidth(), (int) this.camera.getHeight());
 	}

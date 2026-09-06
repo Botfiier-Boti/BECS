@@ -6,6 +6,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 import org.joml.primitives.Intersectionf;
 
 import com.botifier.becs.graphics.Renderer;
@@ -85,7 +86,7 @@ public class Triangle extends Shape {
 	}
 
 	@Override
-	public Vector2f closestTo(Vector2f v) {
+	public Vector2f closestTo(Vector2fc v) {
 		return null;
 	}
 

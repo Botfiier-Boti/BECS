@@ -83,8 +83,8 @@ class PolygonTest {
 		Polygon p = Polygon.createPolygon(Arrays.copyOf(points, points.length));
 		
 		//Tests 8 directions 
-		for (int y = -1; y < 1; y++) {
-			for (int x = -1; x < 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			for (int x = -1; x <= 1; x++) {
 				Vector2f test = new Vector2f(x, y);
 				Polygon moved = p.move(test);
 				
@@ -94,9 +94,6 @@ class PolygonTest {
 				assertVector2fArrayEquals(moved.getPoints(), movedPoints, EPSILON);
 			}
 		}
-		
-		
-		
 	}
 
 	@Test
@@ -108,8 +105,10 @@ class PolygonTest {
 		Polygon p1 = Polygon.createPolygon(points1);
 		p1 = p1.scale(2);
 		
-		assertArrayEquals(points2, p1.getPoints());
+		assertVector2fArrayEquals(points2, p1.getPoints(), EPSILON);
 		assertEquals(p1.getCenter(), Math2.calcCenteroid(points2));
 	}
+	
+	
 
 }

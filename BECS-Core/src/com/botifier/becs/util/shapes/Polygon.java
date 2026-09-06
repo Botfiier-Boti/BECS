@@ -17,6 +17,7 @@ import org.joml.Intersectionf;
 import org.joml.Matrix2f;
 import org.joml.Matrix2fc;
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
@@ -27,14 +28,14 @@ import com.botifier.becs.util.Math2;
 /**
  * Polygon
  * 
+ * All polygons are wound the same direction
+ * 
  * TODO: Document this
  * TODO: Optimize this
  * 
  * @author Botifier
  */
 public class Polygon extends Shape {
-
-	// TriangulatedPolygon triangl;
 
 	private List<Line> edges;
 	private boolean updated = false;
@@ -107,10 +108,25 @@ public class Polygon extends Shape {
 	}
 
 	@Override
-	public Vector2f closestTo(Vector2f v) {
+	public Vector2f closestTo(Vector2fc v) {
+		
+		 Vector2f closest = null;
+		 float minDist2 = Float.MAX_VALUE;
+		 for (Line edge : getEdges()) {
+			 Vector2f candidate = edge.closestTo(v); // uses Line.closestTo(Vector2fc)
+			 float dist2 = candidate.distanceSquared(v);
+			 if (dist2 < minDist2) {
+				 minDist2 = dist2;
+				 closest = candidate;
+		     }
+		 }
+
+		 return closest;
+		    
+		/*
 		return Arrays.stream(points)
 				.min(Comparator.comparingDouble(p -> p.distance(v)))
-				.orElse(points[0]);
+				.orElse(points[0]);*/
 	}
 
 	@Override
@@ -118,10 +134,25 @@ public class Polygon extends Shape {
 		return intersects(s.toPolygon());
 	}
 
+	/**
+	 * Checks if the point intersects with this polygon
+	 * Unlike contains, also scans edges
+	 * 
+	 * @param v Vector2f point to check
+	 * @return boolean Whether they intersect or not
+	 */
 	public boolean intersects(Vector2f v) {
 		return intersects(v.x, v.y);
 	}
 
+	/**
+	 * Checks if the point intersects with this polygon
+	 * Unlike contains, also scans edges
+	 *  
+	 * @param x float X pos
+	 * @param y float Y pos
+	 * @return boolean Whether they intersect or not
+	 */
 	public boolean intersects(float x, float y) {
 		return contains(x, y) || getEdges().stream().anyMatch(l -> l.contains(x, y));
 	}
@@ -137,6 +168,14 @@ public class Polygon extends Shape {
 
 	}
 
+	/**
+	 * Check the penetration of two polygons based on an axis
+	 * @param axis Vector2f The projection axis
+	 * @param p Polygon First polygon
+	 * @param p2 Polygon Second polygon
+	 * @param out PolygonOutput Output for penetration info
+	 * @return boolean Whether or not a penetration occurred
+	 */
 	private boolean checkProjection(Vector2f axis, Polygon p, Polygon p2, PolygonOutput out) {
 		Vector2f outputA = CollisionUtil.projectPolygon(p, axis);
 		Vector2f outputB = CollisionUtil.projectPolygon(p2, axis);
@@ -155,6 +194,13 @@ public class Polygon extends Shape {
 		return true;
 	}
 
+	/**
+	 * Checks if at least one of the polygons are fully engulfed by the other
+	 * @param axis Vector2f The projection axis
+	 * @param p1 Polygon First polygon
+	 * @param p2 Polygon Second polygon
+	 * @return boolean If at least one projection is fully contained within the other
+	 */
 	private boolean checkFullContainment(Vector2f axis, Polygon p1, Polygon p2) {
 	    Vector2f projection1 = CollisionUtil.projectPolygon(p1, axis); // Min and max for p1
 	    Vector2f projection2 = CollisionUtil.projectPolygon(p2, axis); // Min and max for p2
@@ -268,14 +314,6 @@ public class Polygon extends Shape {
 		updated = true;
 	}
 
-	public Polygon startAtIntersection(Polygon p, Vector2f vel) {
-		//Vector2f start = new Vector2f(getCenter());
-		Polygon movement = move(vel);
-		Polygon clip = p.clip(this);
-
-		return clip == null ? null : movement.mergeNoRepeat(clip);
-	}
-
 	/**
 	 * Creates a clipping using the specified polygon
 	 * @param p Polygon to use
@@ -302,7 +340,7 @@ public class Polygon extends Shape {
 
 	/**
 	 * Converts the polygon into a list of lines representing its edges
-	 * @return List<Line> The polygon as lines
+	 * @return List\<Line\> The polygon as lines
 	 */
 	public List<Line> getEdges() {
 		if (edges == null || edges.isEmpty() || updated) {
@@ -333,7 +371,7 @@ public class Polygon extends Shape {
 
 	/**
 	 * Returns all of the points within the polygon
-	 * @return
+	 * @return Vector2f[] An array of all points in the polygon
 	 */
 	public Vector2f[] getPoints() {
 		return points;
@@ -341,8 +379,8 @@ public class Polygon extends Shape {
 
 	/**
 	 * Returns the point from the location specified in the array
-	 * @param point int position in the array
-	 * @return Vector2f point at the position
+	 * @param point int Position in the array
+	 * @return Vector2f Point at the position
 	 */
 	public Vector2f getPoint(int point) {
 		return points[point];
@@ -350,8 +388,8 @@ public class Polygon extends Shape {
 
 	/**
 	 * Creates a copy of the Polygon in a new location
-	 * @param v Vector2f amount to move
-	 * @return Polygon the polygon in a new location
+	 * @param v Vector2f Amount to move
+	 * @return Polygon The polygon in a new location
 	 */
 	public Polygon move(Vector2f v) {
 		Vector2f[] newPoints = Arrays.stream(points)
@@ -362,8 +400,8 @@ public class Polygon extends Shape {
 
 	/**
 	 * Merges two polygons and outputs the result. Does not remove any points.
-	 * @param p Polygon to merge
-	 * @return Polygon the result
+	 * @param p Polygon To merge
+	 * @return Polygon The result
 	 */
 	public Polygon merge(Polygon p) {
 		Vector2f[] hold = Arrays.copyOf(points, points.length + p.points.length);
@@ -372,9 +410,9 @@ public class Polygon extends Shape {
 	}
 
 	/**
-	 *
-	 * @param p
-	 * @return
+	 * Merges two polygons and outputs the result. Removes points without changing topology
+	 * @param p Polygon To merge
+	 * @return Polygon The result
 	 */
 	public Polygon mergeNoRepeat(Polygon p) {
 		Polygon hold = union(p);
@@ -382,11 +420,31 @@ public class Polygon extends Shape {
 		return hold;
 	}
 
+	/**
+	 * Convex hull helper function
+	 * calculates the orientation of three vectors 
+	 * 
+	 * states:
+	 * 0: the points are collinear
+	 * 1: the points make a left turn 
+	 * 2: the points make a right turn
+	 * 
+	 * @param p
+	 * @param q
+	 * @param r
+	 * @return int One of three states 0, 1, and 2. 
+	 */
 	private int orien(Vector2f p, Vector2f q, Vector2f r) {
 		float val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
 		return val > 0 ? 1 : val < 0 ? 2 : 0;
 	}
 
+	/**
+	 * Returns the convex hull of this polygon and the provided ones
+	 * 
+	 * @param p Polygon... Polygons to hull
+	 * @return Polygon The convex hull of all of the provided polygons
+	 */
 	public Polygon convexHull(Polygon... p) {
 
 		List<Vector2f> unique = new ArrayList<>(Arrays.asList(points));
@@ -415,6 +473,7 @@ public class Polygon extends Shape {
 			q = (po + 1) % points.length;
 
 			for (int i = 0; i < points.length; i++) {
+				//Only check if the points make a right turn, all polygons are wound one direction
 				if (orien(points[po], points[i], points[q]) == 2) {
 					q = i;
 				}
@@ -426,6 +485,11 @@ public class Polygon extends Shape {
 		return Polygon.createPolygon(hull.toArray(Vector2f[]::new));
 	}
 
+	/**
+	 * Returns a scaled copy of this polygon
+	 * @param mat2 Matrix2fc Matrix to transform by
+	 * @return Polygon The scaled polygon
+	 */
 	public Polygon scale(Matrix2fc mat2) {
 		Vector2f[] p = Arrays.stream(points).map(k -> {
 				Vector2f res = new Vector2f(k).sub(getCenter());
@@ -436,6 +500,11 @@ public class Polygon extends Shape {
 		return Polygon.createPolygon(p);
 	}
 
+	/**
+	 * Returns a scaled copy of this polygon
+	 * @param val float The Scalar
+	 * @return Polygon The scaled polygon
+	 */
 	public Polygon scale(float val) {
 		Matrix2fc mat2 = new Matrix2f(val, 0,
 								      0, val);
@@ -540,6 +609,11 @@ public class Polygon extends Shape {
 		sort();
 	}
 
+	/**
+	 * Returns the closest point on the target polygon
+	 * @param target Polygon To check
+	 * @return Entry\<Vector2f, Float\> An entry of the closest point and its distance from this polygons center
+	 */
 	public Entry<Vector2f, Float> findClosestPoint(Polygon target) {
 		if ((target == null) || (target.getPoints().length == 0)) {
 			return null;
@@ -597,6 +671,12 @@ public class Polygon extends Shape {
 		return getEdgePoint(angle, getCenter());
 	}
 
+	/**
+	 * Finds a point on the edge using an angle
+	 * @param angle float To check
+	 * @param origin Vector2f Origin position to use
+	 * @return Vector2f The point
+	 */
 	public Vector2f getEdgePoint(float angle, Vector2f origin) {
 		Vector2f hold = new Vector2f();
 		int intersects = Intersectionf.intersectPolygonRay(points, origin.x, origin.y, (float) Math.cos(angle), (float) Math.sin(angle), hold);
@@ -649,7 +729,7 @@ public class Polygon extends Shape {
 	 */
 	public static Polygon createPolygon(Vector2f... points) {
 		if (points.length < 3) {
-			System.out.println("ERROR: Polygon must have at least 3 points. given: " + points);
+			System.out.println("ERROR: Polygon must have at least 3 points. given: " + Arrays.toString(points));
 			return null;
 		}
 
@@ -676,6 +756,11 @@ public class Polygon extends Shape {
 		return new Polygon(this.points);
 	}
 
+	/**
+	 * Returns the minimum distance between this and another polygon
+	 * @param p Polygon To check
+	 * @return float The distance
+	 */
 	public float distance(Polygon p) {
 		float minDist = Float.MAX_VALUE;
 

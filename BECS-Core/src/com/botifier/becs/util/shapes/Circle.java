@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.joml.Vector2f;
+import org.joml.Vector2fc;
 
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.graphics.images.Image;
@@ -147,7 +148,7 @@ public class Circle extends Shape {
 	}
 
 	@Override
-	public Vector2f closestTo(Vector2f v) {
+	public Vector2f closestTo(Vector2fc v) {
 		float angle = Math2.calcAngle(center, v);
 
 		float x = (float) (Math.cos(angle) * radius);

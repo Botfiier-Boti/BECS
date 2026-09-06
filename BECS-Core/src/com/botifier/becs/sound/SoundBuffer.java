@@ -72,7 +72,7 @@ public class SoundBuffer {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
+        
         IntBuffer error   = BufferUtils.createIntBuffer(1);
         long      decoder = stb_vorbis_open_memory(vorbis, error, null);
         if (decoder == NULL) {

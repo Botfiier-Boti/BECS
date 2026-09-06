@@ -25,6 +25,7 @@
 
 package com.botifier.becs.graphics.images;
 
+import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.glfw.GLFW.glfwSetWindowIcon;
 import static org.lwjgl.opengl.GL11.GL_NEAREST;
 import static org.lwjgl.opengl.GL11.GL_RGBA;
@@ -67,6 +68,8 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
 import com.botifier.becs.Game;
+
+import assets.AssetLoader;
 
 public class Texture {
 
@@ -321,8 +324,8 @@ public class Texture {
 	public static Texture createColoredTexture(int width, int height, Color c) {
 		String locationString = "**internal**:" + c.hashCode();
 		ByteBuffer image = null;
-		if (textureLocations.containsKey(locationString)) {
-			Texture t = textureLocations.get(locationString);
+		Texture t = null;
+		if (( t = textureLocations.get(locationString)) != null) {
 			return t;
 		}
 		image = MemoryUtil.memCalloc(width * height * 4);
@@ -337,7 +340,7 @@ public class Texture {
 		}
 
 		image.flip();
-		Texture t = createTexture(width, height, image, locationString);
+		t = createTexture(width, height, image, locationString);
 		return t;
 	}
 
@@ -388,7 +391,7 @@ public class Texture {
 		ClassLoader cl = Image.class.getClassLoader();
 		Texture t = null;
 		try {
-			t = loadTexture(ImageIO.read(cl.getResourceAsStream(path)), path);
+			t = loadTexture(ImageIO.read(AssetLoader.loadAsset(path)), path);
 			t.location = path;
 		} catch (IOException e) {
 			e.printStackTrace();

@@ -1,0 +1,157 @@
+package com.botifier.becs.util.glfw;
+
+import static org.lwjgl.glfw.GLFW.glfwGetTime;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import com.botifier.becs.GameTimer;
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (C) 2014-2015, Heiko Brumme
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+public class GLFWGameTimer implements GameTimer {
+
+    /**
+     * The last time getDelta was called
+     */
+    private volatile double lastLoop;
+
+    /**
+     * The amount of time since last update
+     * Used to determine UPS and FPS
+     */
+    private AtomicReference<Float> timeCount = new AtomicReference<Float>(0f);
+
+    /**
+     * The current FPS
+     */
+    private final AtomicInteger fps = new AtomicInteger(0);
+
+    /**
+     * The current UPS
+     */
+    private final AtomicInteger ups = new AtomicInteger(0);
+
+    /**
+     * Counter used to determine the current FPS
+     */
+    private final AtomicInteger fpsCount = new AtomicInteger(0);
+
+    /**
+     * Counter used to determine the current UPS
+     */
+    private final AtomicInteger upsCount = new AtomicInteger(0);
+
+    /**
+     * Initializes the timer
+     */
+    @Override
+	public GLFWGameTimer init() {
+        lastLoop = getTime();
+        return this;
+    }
+
+    /**
+     * Gets the current time from GLFW
+     * @return
+     */
+    @Override
+	public double getTime() {
+        return glfwGetTime();
+    }
+
+    /**
+     * Updates the amount of time since the last call of getDelta
+     * @return Time since last call
+     */
+    @Override
+	public float getDelta() {
+        double time = getTime();
+        float delta = (float) (time - lastLoop);
+        lastLoop = time;
+        timeCount.getAndAccumulate(delta, (x, y) -> x + y);
+        return delta;
+    }
+
+    /**
+     * Ups the fpsCount variable
+     */
+    @Override
+	public void updateFPS() {
+    	fpsCount.incrementAndGet();
+    }
+
+    /**
+     * Ups the upsCount variable
+     */
+    @Override
+	public void updateUPS() {
+    	upsCount.getAndIncrement();
+    }
+
+    /**
+     * Sets the current FPS and UPS every second
+     */
+    @Override
+	public void update() {
+        if (timeCount.get() > 1f) {
+            fps.set(fpsCount.get());
+            fpsCount.set(0);
+
+            ups.set(upsCount.get());
+            upsCount.set(0);
+
+            timeCount.accumulateAndGet(-1f, (x, y) -> x + y);
+        }
+    }
+
+    /**
+     * Returns the current FPS
+     * @return The current FPS
+     */
+    @Override
+	public int getFPS() {
+    	int fps = this.fps.get();
+        return fps > 0 ? fps : fpsCount.get();
+    }
+
+    /**
+     * Returns the current UPS
+     * @return The current UPS
+     */
+    @Override
+	public int getUPS() {
+    	int ups = this.ups.get();
+        return ups > 0 ? ups : upsCount.get();
+    }
+
+    /**
+     * Gets the time since the last loop
+     * @return Last loop time
+     */
+    @Override
+	public double getLastLoopTime() {
+        return lastLoop;
+    }
+
+}

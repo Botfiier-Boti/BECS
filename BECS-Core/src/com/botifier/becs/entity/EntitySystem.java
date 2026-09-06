@@ -1,13 +1,14 @@
 package com.botifier.becs.entity;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import com.botifier.becs.Game;
+import com.google.common.collect.Sets;
 
 public abstract class EntitySystem {
-
+	
 	/**
 	 * Whether or not the system is paused
 	 * A system can ignore this if it feels like it.
@@ -40,14 +41,31 @@ public abstract class EntitySystem {
 	@SafeVarargs
 	public EntitySystem(Game g, String... required) {
 		this(g);
-		requiredComponents = required;
+		requiredComponents = makeLower(required);
 	}
 
 	/**
+	 * Support function for minor performance boost
+	 * @param strings
+	 * @return
+	 */
+	private final String[] makeLower(String... strings) {
+		String[] lowerCopy = new String[strings.length];
+		
+		for (int i = 0; i < lowerCopy.length; i++) {
+			lowerCopy[i] = strings[i].toLowerCase();
+		}
+		
+		return lowerCopy;
+	}
+	
+	/**
 	 * Applies the system to array of entities
+	 * 
+	 * This method should check isPaused() if pausing is desired.
 	 * @param entities Entity[] Array to apply to
 	 */
-	public abstract void apply(Entity[] entities);
+	public abstract CompletableFuture<Void> apply(Entity[] entities);
 
 	/**
 	 * Run when game is closing
@@ -63,11 +81,26 @@ public abstract class EntitySystem {
 		if (requiredComponents == null || requiredComponents.length == 0) {
 			return Entity.getEntities();
 		}
-		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(requiredComponents[0]);
-		Set<Entity> hold = new HashSet<>();
 		
-		entities.parallelStream().filter(e -> e.hasComponent(requiredComponents)).forEachOrdered(hold::add);;
-		return hold;
+		String bestStarter = requiredComponents[0];
+	    int minSize = EntityComponentManager.getNumberOfEntitiesWithComponent(bestStarter);
+
+	    for (int i = 1; i < requiredComponents.length; i++) {
+	    	String comp = requiredComponents[i];
+	    	
+	        int size = EntityComponentManager.getNumberOfEntitiesWithComponent(comp);
+	        if (size < minSize) {
+	            minSize = size;
+	            bestStarter = comp;
+	        }
+	    }
+		
+		Set<Entity> entities = EntityComponentManager.getEntitiesWithComponent(bestStarter);
+		
+		return entities.parallelStream()
+				   .filter(e -> e.hasComponentPrelower(requiredComponents))
+				   .collect(Collectors.toCollection(Sets::newHashSet));
+		
 	}
 
 	/**
@@ -88,7 +121,7 @@ public abstract class EntitySystem {
 	}
 
 	/**
-	 * Returns the game that this system belongs to
+	 * Returns the game instance that this system belongs to
 	 * @return Game
 	 */
 	public Game getGame() {
@@ -96,8 +129,9 @@ public abstract class EntitySystem {
 	}
 	
 	/**
-	 * Should pause the system
-	 * Unless someone forgets to add pausing to apply
+	 * Pauses the system
+	 * 
+	 * The effects of pausing depends on the implementation of apply
 	 */
 	public void pause() {
 		paused = true;

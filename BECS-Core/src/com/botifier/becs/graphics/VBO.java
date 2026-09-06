@@ -9,6 +9,9 @@ import static org.lwjgl.opengl.GL15.glGenBuffers;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+
+import org.lwjgl.opengl.GL44;
+
 /*
  * The MIT License (MIT)
  *
@@ -66,6 +69,18 @@ public class VBO {
 
 	public void uploadData(int target, IntBuffer data, int usage) {
 		glBufferData(target, data, usage);
+	}
+	
+	public void uploadBufferStorage(int target, FloatBuffer data, int flags) {
+		GL44.glBufferStorage(target, data, flags);
+	}
+	
+	public void uploadBufferStorage(int target, long size, int flags) {
+		GL44.glBufferStorage(target, size, flags);
+	}
+	
+	public void uploadBufferStorage(int target, ByteBuffer data, int flags) {
+		GL44.glBufferStorage(target, data, flags);
 	}
 
 	public void delete() {

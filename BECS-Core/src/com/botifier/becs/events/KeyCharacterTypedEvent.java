@@ -7,7 +7,7 @@ import com.botifier.becs.util.events.Event;
  * 
  * Executes whenever a key is typed
  */
-public class KeyCharacterActionEvent extends Event {
+public class KeyCharacterTypedEvent extends Event {
 	
 	/**
 	 * The GLFW key code
@@ -18,7 +18,7 @@ public class KeyCharacterActionEvent extends Event {
 	 * KeyCharacterActionEvent constructor
 	 * @param charCode The GLFW character typed 
 	 */
-	public KeyCharacterActionEvent(int charCode) {
+	public KeyCharacterTypedEvent(int charCode) {
 		this.keyCode = charCode;
 	}
 	
