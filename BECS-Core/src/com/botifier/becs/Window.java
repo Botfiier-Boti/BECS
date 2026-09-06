@@ -1,8 +1,11 @@
 package com.botifier.becs;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.lwjgl.opengl.GLCapabilities;
 
 import com.botifier.becs.graphics.images.Image;
+import com.botifier.becs.util.Input;
 
 public interface Window {
 
@@ -36,11 +39,48 @@ public interface Window {
 	 * Destroys the window
 	 */
 	void destroy();
+	
+	/**
+	 * Uses the capabilities from this window
+	 */
+	void useCapabilities();
+	
+	/**
+	 * Clears the window
+	 */
+	void clear();
+	
+	/**
+	 * Get the window width
+	 * @return int Width
+	 */
+	int getWidth();
+	
+	/**
+	 * Get the window height
+	 * @return int height
+	 */
+	int getHeight();
 
 	/**
-	 * Returns the window's GL capabilities
-	 * @return GLCapabilites
+	 * Returns if the window is running
+	 * 
+	 * Implementation: should use an atomic access, or be volatile
+	 * 
+	 * @return boolean If the window is running
 	 */
-	GLCapabilities getGLCapabilities();
+	boolean isRunning();
+	
+	/**
+	 * Gets this windows input
+	 * @return Input
+	 */
+	Input getInput();
+	
+	/**
+	 * Gets this windows timer
+	 * @return GameTimer
+	 */
+	GameTimer getTimer();
 
 }

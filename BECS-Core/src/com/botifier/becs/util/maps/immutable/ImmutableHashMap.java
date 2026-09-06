@@ -338,7 +338,7 @@ public record ImmutableHashMap<K, V>(PairNode<K, V>[] data, int size, float load
 
 	@Override
 	public int hashCode() {
-	    return Objects.hash(data, size);
+	    return Objects.hash(Arrays.hashCode(data), size);
 	}
 
 	private final boolean match(Object o1, long hash1, Object o2, long hash2) {

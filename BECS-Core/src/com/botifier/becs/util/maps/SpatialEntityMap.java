@@ -45,6 +45,7 @@ import com.google.common.collect.Sets;
  */
 public class SpatialEntityMap {
 	public static final int BATCH_SIZE = 32;
+	
 	public static final int ENTITY_STATE_MISSING = 0;
 	public static final int ENTITY_STATE_REMOVED_FROM_AWAKE = 1;
 	public static final int ENTITY_STATE_REMOVED_FROM_SLEEPING = 2;
@@ -128,7 +129,7 @@ public class SpatialEntityMap {
 			return false;
 		}
 		if (contains(e)) {
-			state = removeEntity(e);
+			state = removeEntityQuery(e);
 		}
 		EntityComponent<Shape> s = e.getComponent("CollisionShape");
 		if (s == null) {
@@ -163,7 +164,7 @@ public class SpatialEntityMap {
 			return false;
 		}
 		if (contains(e)) {
-			removeEntity(e);
+			removeEntityQuery(e);
 		}
 		EntityComponent<Shape> s = e.getComponent("CollisionShape");
 		if (s == null) {
@@ -189,11 +190,11 @@ public class SpatialEntityMap {
 	/**
 	 * Removes an entity from the map
 	 * 
-	 * any return state > 1 is a success
+	 * any return state > 0 is a success
 	 * @param e Entity To remove
 	 * @return int State based on the existence of the entity in the map, 0 the entity wasn't there, 1 entity was awake and removed, 2 entity was asleep and removed
 	 */
-	public int removeEntity(Entity e) {
+	public int removeEntityQuery(Entity e) {
 		if (!contains(e)) {
 			return ENTITY_STATE_MISSING;
 		}
@@ -211,13 +212,23 @@ public class SpatialEntityMap {
 			}
 		}
 
-		try {
-			entityLocations.remove(e.getUUID());
-		} catch (NullPointerException ne) {
+		if (entityLocations.remove(e.getUUID()) == null) {
 			sleepingEntities.remove(e.getUUID());
 			return ENTITY_STATE_REMOVED_FROM_SLEEPING;
 		}
+		
 		return ENTITY_STATE_REMOVED_FROM_AWAKE;
+	}
+	
+	/**
+	 * Removes an entity from the map
+	 * 
+	 * for when you don't really care outside of whether it succeeded or not
+	 * @param e Entity To Remove
+	 * @return boolean Whether its gone or not
+	 */
+	public boolean removeEntity(Entity e) {
+		return removeEntityQuery(e) > 0;
 	}
 	
 	public boolean sleepEntity(Entity e) {
@@ -331,10 +342,7 @@ public class SpatialEntityMap {
 												return v.isEmpty() ? null : v;
 											});
 										});
-
-		try {
-			entityLocations.put(e.getUUID(), sph);
-		} catch (NullPointerException ex) {
+		if (entityLocations.putIfAbsent(e.getUUID(), sph) != null) {
 			sleepingEntities.put(e.getUUID(), sph);
 		}
 		

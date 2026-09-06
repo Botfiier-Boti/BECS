@@ -3,11 +3,13 @@ package com.botifier.becs.entity;
 import java.awt.Color;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.function.Supplier;
 
-import org.joml.Vector2f;
 import org.joml.Vector2fc;
 
 import com.botifier.becs.Game;
@@ -16,22 +18,25 @@ import com.botifier.becs.events.*;
 import com.botifier.becs.events.listeners.PhysicsListener;
 import com.botifier.becs.graphics.images.Image;
 import com.botifier.becs.util.EntityRunnable;
+import com.botifier.becs.util.maps.StalingMap;
+import com.botifier.becs.util.maps.immutable.ImmutableHashMap;
+import com.botifier.becs.util.memory.ExceptionFormatter;
 import com.botifier.becs.util.shapes.Shape;
 
 public class EntityComponentManager {
 	/**
 	 * Maps list of owners and name of component
 	 */
-	private static final ConcurrentHashMap<CharSequence, CopyOnWriteArraySet<Entity>> componentMap = new ConcurrentHashMap<>();
+	private static final Map<CharSequence, CopyOnWriteArraySet<Entity>> componentMap = new StalingMap<>();
 	/**
 	 * Maps name of component to class type of information within
 	 */
-	private static final ConcurrentHashMap<CharSequence, ComponentKey<?>> nameMap = new ConcurrentHashMap<>();
+	private static final Map<CharSequence, ComponentKey<?>> nameMap = new StalingMap<>();
 	
 	/**
 	 * Map of overrides for custom component types
 	 */
-	private static final ConcurrentHashMap<Class<?>, Class<? extends EntityComponent<?>>> overrideMap = new ConcurrentHashMap<>();
+	private static final Map<Class<?>, Class<? extends EntityComponent<?>>> overrideMap = new StalingMap<>();
 	
 	/**
 	 * Initializes basic components
@@ -66,7 +71,7 @@ public class EntityComponentManager {
 	 */
 	public static <T> void createComponent(String name,  Class<T> dataType) {
 		if (dataType == null) {
-			throw new IllegalArgumentException("dataType cannot be null!");
+			throw ECMExceptionCache.getError(ECMErrorTemplate.NULL_DATATYPE);
 		}
 		if (nameMap.containsKey(name.toLowerCase())) {
 			throw new IllegalArgumentException(String.format("Component of name '%s' already exists.", name));
@@ -230,6 +235,47 @@ public class EntityComponentManager {
 		return (ComponentKey<T>) nameMap.get(name.toLowerCase());
 	}
 
+	//Experimental caching of errors
+	
+	private enum ECMErrorTemplate {
+		NULL_DATATYPE("dataType cannot be null", () -> new IllegalArgumentException()),
+		COMPONENT_ALREADY_EXISTS("Component of name '%s' already exists.", () -> new IllegalArgumentException());
+		
+		private final String templateMessage;
+		private final Supplier<? extends RuntimeException > supplier;
+		
+		ECMErrorTemplate(String templateMessage, Supplier<? extends RuntimeException > supplier) { 
+			this.templateMessage = templateMessage; 
+			this.supplier = supplier;
+		}
+		
+	}
+	
+	private static final class ECMExceptionCache {
+		
+		
+		final static ImmutableHashMap<ECMErrorTemplate, ThreadLocal<RuntimeException >> exceptionCache;
+		
+		static {
+			Map<ECMErrorTemplate, ThreadLocal<RuntimeException >> tempMap = new HashMap<>();
+
+			for (ECMErrorTemplate template : ECMErrorTemplate.values()) {
+				tempMap.put(template, ThreadLocal.withInitial(template.supplier));
+			}
+			
+			exceptionCache = ImmutableHashMap.from(tempMap);
+		}
+		
+		private static final RuntimeException  getThrowable(ECMErrorTemplate template) {
+			return exceptionCache.get(template).get();
+		}
+		
+		public static RuntimeException  getError(ECMErrorTemplate template, Object... params) {
+			return ExceptionFormatter.formatMessage(getThrowable(template), template.templateMessage, params);
+		}
+		
+	}
+	
 }
 
 

@@ -1,5 +1,6 @@
 package com.botifier.becs.graphics;
 
+import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
@@ -610,6 +611,8 @@ public class Renderer {
 	 * Destroys the renderer and everything within
 	 */
 	public void destroy() {
+		glfwMakeContextCurrent(g.getWindowID());
+		
 		begin();
 		end();
 		if (vao != null) {

@@ -173,7 +173,7 @@ public class Math2 {
 	 * @param dst2 Vector2f second
 	 * @return float The angle between
 	 */
-	public static float calcAngle(Vector2fc src2,Vector2fc dst2) {
+	public static float calcAngle(final Vector2fc src2, final Vector2fc dst2) {
 		return Math.atan2(dst2.y()-src2.y(), dst2.x()-src2.x());
 	}
 
@@ -201,11 +201,22 @@ public class Math2 {
 	 * A linear interpolation function
 	 * @param a float start
 	 * @param b float end
-	 * @param c float time
+	 * @param t float time
 	 * @return float The interpolation
 	 */
-	public static float lerp(float a, float b, float c) {
-		return a+c*(b-a);
+	public static float lerp(float a, float b, float t) {
+		return a+t*(b-a);
+	}
+	
+	/**
+	 * A linear interpolation function, using ints
+	 * @param a int start
+	 * @param b int end
+	 * @param t byte time
+	 * @return int The interpolation
+	 */
+	public static int intLerp(final int a, final int b, final byte t) {
+		return a + ((b-a) * t >> 8);
 	}
 
 	/**
@@ -218,7 +229,21 @@ public class Math2 {
 	public static float getCloser(float a, float b, float c) {
 		return (Math.abs(c-a) < Math.abs(c-b)) ? a : b;
 	}
-
+	
+	
+	static final int[] pow10 = {
+		1,
+		10,
+		100,
+		1000,
+		10000,
+		100000,
+		1000000,
+		10000000,
+		100000000,
+		1000000000,
+	};
+	
 	public static Vector2f round(final Vector2f v, final int dec) {
 		Vector2f n = new Vector2f();
 		return n.set(round(v.x, dec), round(v.y, dec));
@@ -226,15 +251,20 @@ public class Math2 {
 
 	/**
 	 * Rounds a float to x decimal places
+	 * handles up to nine places, as that is what int can hold and is already beyond float precision
 	 * 
 	 * Rounds by snapping decimals
 	 * technically truncation, but I named it round so it is round
 	 * @param f float To round
 	 * @param dec int Number of decimals
+	 * @throws IllegalArgumentException if dec > 9 
 	 * @return float rounded number
 	 */
 	public static float round(final float f, final int dec) {
-		final float divisor =  (float) java.lang.Math.pow(10, dec);
+		if (dec >= pow10.length)
+			throw new IllegalArgumentException("Function does not support having more than 9 decimal places due to float precision.");
+		
+		final float divisor =  pow10[dec];
 		final int value = Math.round(f * divisor);
 		
 		return value / divisor;

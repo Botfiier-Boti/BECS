@@ -1,12 +1,6 @@
 package com.botifier.becs.util.glfw;
 
-import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
-import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
-import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
-import static org.lwjgl.glfw.GLFW.glfwGetCursorPos;
-import static org.lwjgl.glfw.GLFW.glfwGetMouseButton;
-import static org.lwjgl.glfw.GLFW.glfwPollEvents;
-import static org.lwjgl.glfw.GLFW.glfwSetCursor;
+import static org.lwjgl.glfw.GLFW.*;
 
 import java.nio.DoubleBuffer;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,9 +8,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.joml.Vector2f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWCharCallback;
+import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.system.MemoryUtil;
 
 import com.botifier.becs.Game;
+import com.botifier.becs.events.KeyCharacterTypedEvent;
 import com.botifier.becs.graphics.Renderer;
 import com.botifier.becs.util.Input;
 
@@ -29,6 +26,11 @@ import com.botifier.becs.util.Input;
  * @author Botifier
  */
 public class GLFWInput implements Input {
+	/**|
+	 * The game that owns this input
+	 */
+	private final Game owner;
+	
 	/**
 	 * The window id
 	 */
@@ -63,8 +65,21 @@ public class GLFWInput implements Input {
 	 * Last character typed
 	 */
 	private int lastChar = 0;
+	/**
+	 * Character Callback For typing
+	 */
+	private GLFWCharCallback gcc;
+
+	/**
+	 * Key Callback Sends key input to the input manager
+	 */
+	private GLFWKeyCallback fkc;
+	
+	private boolean initialized = false;
 	
 	private Object keyLock = null;
+	
+	
 
 	/**
 	 * Input constructor
@@ -76,8 +91,9 @@ public class GLFWInput implements Input {
 	 *
 	 * @param window long Window id
 	 */
-	public GLFWInput(long window) {
-		this.window = window;
+	public GLFWInput(Game owner, long windowId) {
+		this.owner = owner;
+		this.window = windowId;
 		this.mouse = new Vector2f(0, 0);
 		this.mouseRaw = new Vector2f(0, 0);
 
@@ -87,6 +103,32 @@ public class GLFWInput implements Input {
 		this.cursors.put("basic", GLFW.glfwCreateStandardCursor(GLFW.GLFW_ARROW_CURSOR));
 		this.cursors.put("beam", GLFW.glfwCreateStandardCursor(GLFW.GLFW_IBEAM_CURSOR));
 		this.cursors.put("hand", GLFW.glfwCreateStandardCursor(GLFW.GLFW_HAND_CURSOR));
+	}
+	
+	@Override
+	public GLFWInput init() {
+		if (initialized)
+			return this;
+		
+		glfwSetKeyCallback(window, fkc = new GLFWKeyCallback() {
+			@Override
+			public void invoke(long window, int key, int scancode, int action, int mods) {
+				keyAction(key, action);
+			}
+		});
+		
+		glfwSetCharCallback(window, gcc = new GLFWCharCallback() {
+
+			@Override
+			public void invoke(long window, int charCode) {
+				setLastCharCode(charCode);
+				
+				if (owner.getEventManager() != null)
+					owner.getEventManager().executeEvent(new KeyCharacterTypedEvent(charCode), "CharCallback");
+			}
+
+		});
+		return this;
 	}
 
 	/**
@@ -339,4 +381,21 @@ public class GLFWInput implements Input {
 		lastChar = 0;
 	}
 
+	/**
+	 * The key callback
+	 * 
+	 * @return GLFWKeyCallback
+	 */
+	public GLFWKeyCallback getFkc() {
+		return fkc;
+	}
+	
+	/**
+	 * The character callback
+	 * 
+	 * @return GLFWCharCallback
+	 */
+	public GLFWCharCallback getCharacterCallback() {
+		return gcc;
+	}
 }

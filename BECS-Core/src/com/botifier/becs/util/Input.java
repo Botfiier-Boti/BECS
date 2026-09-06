@@ -5,6 +5,11 @@ import org.joml.Vector2f;
 public interface Input {
 
 	/**
+	 * Initializes the Input 
+	 */
+	Input init();
+	
+	/**
 	 * Updates the mouse position
 	 * @param pX double New x
 	 * @param pY double New y

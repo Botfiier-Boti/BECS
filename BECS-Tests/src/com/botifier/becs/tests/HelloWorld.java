@@ -185,7 +185,7 @@ public class HelloWorld extends Game{
 			Entity.addEntity(wew);
 		}
 		
-		IntStream.range(0, 20000).parallel().forEach(i -> {
+		IntStream.range(0, 1).parallel().forEach(i -> {
 			final int localI = i;
 			Entity e2 = new Entity("Davy") {
 				@Override

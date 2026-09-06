@@ -307,6 +307,9 @@ public class PhysicsSystem extends EntitySystem {
 
 		//Start checking entities for collision
 		for (Entity e2 : entitiesInternal) {
+			if (e == e2)
+				continue;
+			
 			//Local adjustment
 			Vector2f velAdj = new Vector2f(0);
 

@@ -337,7 +337,6 @@ public class EventManager {
 				.collect(Collectors.toList());
 		CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
 		allOf.join();
-		controllerQueues.clear();
 	}
 	
 	/**

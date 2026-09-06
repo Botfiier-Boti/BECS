@@ -1,20 +1,13 @@
 package com.botifier.becs.entity;
 
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import com.botifier.becs.Game;
 import com.google.common.collect.Sets;
 
 public abstract class EntitySystem {
-
-	private static ThreadLocal<ExecutorService> ex = ThreadLocal.withInitial(() -> new ForkJoinPool(4));
 	
 	/**
 	 * Whether or not the system is paused

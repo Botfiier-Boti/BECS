@@ -12,6 +12,8 @@ import com.botifier.becs.events.*;
  *
  * Base class for Entity Components
  * Stores information atomically
+ * 
+ * 
  * @author Botifier
  *
  * @param \<T\> Type of component

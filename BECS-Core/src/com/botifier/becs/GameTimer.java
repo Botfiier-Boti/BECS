@@ -5,7 +5,7 @@ public interface GameTimer {
 	/**
 	 * Initializes the timer
 	 */
-	void init();
+	GameTimer init();
 
 	/**
 	 * Gets the current time from GLFW

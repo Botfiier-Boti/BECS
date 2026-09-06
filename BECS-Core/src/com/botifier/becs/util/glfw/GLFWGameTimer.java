@@ -66,8 +66,9 @@ public class GLFWGameTimer implements GameTimer {
      * Initializes the timer
      */
     @Override
-	public void init() {
+	public GLFWGameTimer init() {
         lastLoop = getTime();
+        return this;
     }
 
     /**
